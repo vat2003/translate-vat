@@ -1,1 +1,660 @@
-git remote add origin https://github.com/vat2003/translate-vat.git
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Metadata Translator (Gemini AI)</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --danger: #ef4444;
+            --danger-hover: #b91c1c;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --border-color: #e5e7eb;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --radius: 8px;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+        }
+
+        /* --- Tabs Header --- */
+        .tabs {
+            display: flex;
+            background-color: #f9fafb;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 15px 20px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            transition: 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab-btn:hover {
+            background-color: #f3f4f6;
+            color: var(--primary);
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            background-color: var(--card-bg);
+        }
+
+        /* --- Content Area --- */
+        .tab-content {
+            display: none;
+            padding: 30px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        h2 {
+            margin-top: 0;
+            font-size: 20px;
+            color: var(--text-main);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-main);
+            font-size: 14px;
+        }
+
+        .help-text {
+            display: block;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: -4px;
+            margin-bottom: 8px;
+        }
+
+        input[type="text"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            box-sizing: border-box;
+            font-family: inherit;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+        }
+
+        .flex-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        /* --- Buttons --- */
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-primary:disabled {
+            background: #93c5fd;
+            cursor: not-allowed;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: var(--danger-hover);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-outline:hover {
+            background: #eff6ff;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        /* --- Results Area --- */
+        #results {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+            margin-top: 25px;
+        }
+
+        .lang-card {
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 20px;
+            background: #fafafa;
+        }
+
+        .lang-card h3 {
+            margin-top: 0;
+            color: var(--primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 16px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .data-box {
+            background: #fff;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            word-break: break-word;
+        }
+
+        .desc-box {
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .desc-box::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .desc-box::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .copy-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .copy-group strong {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        #loading {
+            display: none;
+            text-align: center;
+            color: var(--primary);
+            font-weight: 600;
+            margin: 20px 0;
+            padding: 15px;
+            background: #eff6ff;
+            border-radius: var(--radius);
+        }
+
+        /* Toast Notification */
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 4px;
+            padding: 12px;
+            position: fixed;
+            z-index: 1000;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s, bottom 0.3s;
+        }
+
+        #toast.show {
+            visibility: visible;
+            opacity: 1;
+            bottom: 50px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="openTab('tab-translate')">🌐 Dịch Thuật</button>
+            <button class="tab-btn" onclick="openTab('tab-settings')">⚙️ Cài Đặt</button>
+        </div>
+
+        <div id="tab-translate" class="tab-content active">
+            <h2>Nội dung cần dịch</h2>
+
+            <div class="form-group">
+                <label>API Key đang sử dụng</label>
+                <div class="flex-group">
+                    <select id="activeApiKeySelect" style="flex: 1;"></select>
+                    <button class="btn-outline" onclick="openTab('tab-settings')">Quản lý Key</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="originalTitle">Original Title</label>
+                <input type="text" id="originalTitle" placeholder="Nhập tiêu đề gốc...">
+            </div>
+
+            <div class="form-group">
+                <label for="originalDesc">Original Description</label>
+                <textarea id="originalDesc" style="height: 150px;" placeholder="Nhập mô tả gốc..."></textarea>
+            </div>
+
+            <button class="btn-primary" id="translateBtn" onclick="translateContent()"
+                style="width: 100%; font-size: 16px;">🚀 BẮT ĐẦU DỊCH</button>
+
+            <div id="loading">⏳ Đang xử lý dịch thuật qua Gemini API. Vui lòng đợi...</div>
+            <div id="results"></div>
+        </div>
+
+        <div id="tab-settings" class="tab-content">
+            <h2>Cấu hình Hệ thống</h2>
+
+            <div class="form-group">
+                <label>1. Quản lý Gemini API Keys</label>
+                <div class="flex-group">
+                    <input type="text" id="newApiKey" placeholder="Nhập API Key mới..." style="flex: 1;">
+                    <button class="btn-primary" onclick="addApiKey()">Thêm Key</button>
+                </div>
+                <div class="flex-group" style="margin-top: 10px;">
+                    <select id="settingApiKeySelect" style="flex: 1;"></select>
+                    <button class="btn-danger" onclick="removeApiKey()">Xóa Key</button>
+                </div>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 30px 0;">
+
+            <div class="form-group">
+                <label>2. Chọn Gemini Model</label>
+                <select id="modelSelect">
+                    <option value="gemini-1.5-flash">Gemini 1.5 Flash (Nhanh, rẻ, phù hợp dịch thuật)</option>
+                    <option value="gemini-1.5-pro">Gemini 1.5 Pro (Thông minh hơn, chậm hơn)</option>
+                    <option value="gemini-3-flash-preview">Gemini 3 Flash Preview (Thử nghiệm)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>3. Ngôn ngữ đích (Target Languages)</label>
+                <span class="help-text">Định dạng: <code>mã_ngôn_ngữ: Tên hiển thị</code> (mỗi ngôn ngữ 1 dòng)</span>
+                <textarea id="languagesInput" style="height: 150px;"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>4. System Prompt</label>
+                <span class="help-text">Các biến hỗ trợ: <code>{{TARGET_LIST}}</code>, <code>{{OUTPUT_FORMAT}}</code>,
+                    <code>{{TITLE}}</code>, <code>{{DESC}}</code></span>
+                <textarea id="promptInput" style="height: 300px; font-family: monospace;"></textarea>
+            </div>
+
+            <button class="btn-primary" onclick="saveSettings()" style="width: 100%;">💾 LƯU CÀI ĐẶT</button>
+        </div>
+    </div>
+
+    <div id="toast">Thông báo</div>
+
+    <script>
+        // --- CONSTANTS & DEFAULTS ---
+        const KEYS_STORAGE = 'gemini_api_keys';
+        const SETTINGS_STORAGE = 'gemini_translator_settings';
+
+        const DEFAULT_LANGUAGES = `pt: Portuguese (Bồ Đào Nha)
+nl: Dutch (Hà Lan)
+ko: Korean (Hàn Quốc)
+ru: Russian (Nga)
+ja: Japanese (Nhật Bản)
+fr: French (Pháp)
+sv: Swedish (Thụy Điển)
+es: Spanish (Tây Ban Nha)
+de: German (Đức)`;
+
+        const DEFAULT_PROMPT = `You are a professional YouTube metadata translator.
+Translate the following TITLE, DESCRIPTION, and HASHTAGS into the specified TARGET LANGUAGES.
+
+REQUIREMENTS (STRICT):
+1. ACCURATE TRANSLATION & STRUCTURE: Preserve the EXACT original meaning, paragraph structure, and bullet points. DO NOT rewrite, summarize, or move information around. Use natural, local SEO keywords.
+2. PROPER NOUNS & BRANDS: KEEP brand names, channel names, and proper nouns exactly as they are. DO NOT translate or remove them.
+3. HASHTAGS: Translate descriptive hashtags (like #dogmusic) into the target language. KEEP brand hashtags in their original form. Ensure all are formatted as valid hashtags.
+4. COPYRIGHT: REMOVE entirely any footer text like URLs, domain names, or "Copyright by..." notices.
+5. LENGTH: Title MUST be <= 100 characters. Description MUST be <= 5000 characters.
+6. FORMAT: Return ONLY valid JSON format strictly matching the schema. Escape all newlines in the description with \\n. DO NOT output plain text or markdown outside the JSON.
+7. COMPLETENESS: Include ALL target languages.
+
+TARGET LANGUAGES:
+{{TARGET_LIST}}
+
+OUTPUT FORMAT (STRICT):
+{
+{{OUTPUT_FORMAT}}
+}
+
+INPUT:
+TITLE:
+{{TITLE}}
+
+DESCRIPTION:
+{{DESC}}`;
+
+        // --- TABS LOGIC ---
+        function openTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.add('active');
+
+            if (tabId === 'tab-translate') {
+                updateActiveApiDropdown();
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById("toast");
+            toast.innerText = message;
+            toast.className = "show";
+            setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+        }
+
+        // --- API KEYS MANAGEMENT ---
+        function loadApiKeys() {
+            const keys = JSON.parse(localStorage.getItem(KEYS_STORAGE) || '[]');
+            const settingSelect = document.getElementById('settingApiKeySelect');
+
+            settingSelect.innerHTML = keys.length ? '' : '<option value="">-- Chưa có API Key --</option>';
+
+            keys.forEach((key, i) => {
+                const text = `Key ${i + 1}: ${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
+                settingSelect.add(new Option(text, key));
+            });
+            updateActiveApiDropdown();
+        }
+
+        function updateActiveApiDropdown() {
+            const keys = JSON.parse(localStorage.getItem(KEYS_STORAGE) || '[]');
+            const activeSelect = document.getElementById('activeApiKeySelect');
+            activeSelect.innerHTML = keys.length ? '' : '<option value="">-- Vui lòng vào Cài đặt thêm API Key --</option>';
+
+            keys.forEach((key, i) => {
+                const text = `Key ${i + 1}: ${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
+                activeSelect.add(new Option(text, key));
+            });
+        }
+
+        function addApiKey() {
+            const input = document.getElementById('newApiKey');
+            const newKey = input.value.trim();
+            if (!newKey) return showToast('Vui lòng nhập API Key!');
+
+            const keys = JSON.parse(localStorage.getItem(KEYS_STORAGE) || '[]');
+            if (!keys.includes(newKey)) {
+                keys.push(newKey);
+                localStorage.setItem(KEYS_STORAGE, JSON.stringify(keys));
+                loadApiKeys();
+                input.value = '';
+                showToast('Đã thêm API Key thành công!');
+            } else {
+                showToast('API Key này đã tồn tại!');
+            }
+        }
+
+        function removeApiKey() {
+            const keyToRemove = document.getElementById('settingApiKeySelect').value;
+            if (!keyToRemove) return;
+
+            if (confirm('Bạn có chắc muốn xóa Key này không?')) {
+                let keys = JSON.parse(localStorage.getItem(KEYS_STORAGE) || '[]');
+                keys = keys.filter(k => k !== keyToRemove);
+                localStorage.setItem(KEYS_STORAGE, JSON.stringify(keys));
+                loadApiKeys();
+                showToast('Đã xóa API Key!');
+            }
+        }
+
+        // --- SETTINGS MANAGEMENT ---
+        function loadSettings() {
+            const settings = JSON.parse(localStorage.getItem(SETTINGS_STORAGE) || '{}');
+
+            document.getElementById('modelSelect').value = settings.model || 'gemini-1.5-flash';
+            document.getElementById('languagesInput').value = settings.languages || DEFAULT_LANGUAGES;
+            document.getElementById('promptInput').value = settings.prompt || DEFAULT_PROMPT;
+        }
+
+        function saveSettings() {
+            const settings = {
+                model: document.getElementById('modelSelect').value,
+                languages: document.getElementById('languagesInput').value.trim(),
+                prompt: document.getElementById('promptInput').value.trim()
+            };
+            localStorage.setItem(SETTINGS_STORAGE, JSON.stringify(settings));
+            showToast('Đã lưu cấu hình thành công!');
+        }
+
+        // Parse Textarea Ngôn ngữ thành Object
+        function getParsedLanguages() {
+            const raw = document.getElementById('languagesInput').value.trim();
+            const langMap = {};
+            const langCodes = [];
+
+            raw.split('\n').forEach(line => {
+                const parts = line.split(':');
+                if (parts.length >= 2) {
+                    const code = parts[0].trim();
+                    const name = parts[1].trim();
+                    langMap[code] = name;
+                    langCodes.push(code);
+                }
+            });
+            return { langMap, langCodes };
+        }
+
+        // --- TRANSLATION LOGIC ---
+        async function translateContent() {
+            const apiKey = document.getElementById('activeApiKeySelect').value;
+            const title = document.getElementById('originalTitle').value.trim();
+            const desc = document.getElementById('originalDesc').value.trim();
+
+            if (!apiKey) return alert('Vui lòng thêm API Key trong tab Cài đặt!');
+            if (!title || !desc) return alert('Vui lòng nhập đầy đủ Title và Description!');
+
+            const { langMap, langCodes } = getParsedLanguages();
+            if (langCodes.length === 0) return alert('Lỗi: Chưa cấu hình Ngôn ngữ đích trong Cài đặt!');
+
+            const model = document.getElementById('modelSelect').value;
+            const promptTemplate = document.getElementById('promptInput').value;
+
+            // Xây dựng biến thay thế
+            const targetListStr = langCodes.join(", ");
+            const outputFormatStr = langCodes.map(lang => `  "${lang}": { "title": "...", "description": "..." }`).join(",\n");
+
+            // Replace vào Prompt
+            const finalPrompt = promptTemplate
+                .replace('{{TARGET_LIST}}', targetListStr)
+                .replace('{{OUTPUT_FORMAT}}', outputFormatStr)
+                .replace('{{TITLE}}', title)
+                .replace('{{DESC}}', desc);
+
+            // UI Trạng thái
+            const btn = document.getElementById('translateBtn');
+            const loading = document.getElementById('loading');
+            const resultsDiv = document.getElementById('results');
+
+            btn.disabled = true;
+            loading.style.display = 'block';
+            resultsDiv.innerHTML = '';
+
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: finalPrompt }] }],
+                        generationConfig: { responseMimeType: "application/json" }
+                    })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error?.message || 'Lỗi từ Gemini API');
+
+                let outputText = data.candidates[0].content.parts[0].text;
+
+                // Clean markdown code blocks if API ignores responseMimeType
+                outputText = outputText.replace(/^```json/mi, '').replace(/```$/m, '').trim();
+
+                const translatedData = JSON.parse(outputText);
+                renderResults(translatedData, langMap);
+
+            } catch (error) {
+                console.error(error);
+                alert('Đã xảy ra lỗi: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                loading.style.display = 'none';
+            }
+        }
+
+        // --- RENDER & COPY ---
+        function renderResults(data, langMap) {
+            const resultsDiv = document.getElementById('results');
+
+            Object.keys(langMap).forEach(langCode => {
+                if (!data[langCode]) return;
+
+                const card = document.createElement('div');
+                card.className = 'lang-card';
+
+                const titleId = `title_${langCode}`;
+                const descId = `desc_${langCode}`;
+                const langName = langMap[langCode] || langCode.toUpperCase();
+
+                card.innerHTML = `
+                    <h3>${langName}</h3>
+                    
+                    <div class="copy-group">
+                        <strong>TITLE</strong>
+                        <button class="btn-outline btn-small" onclick="copyText('${titleId}', this)">Copy Title</button>
+                    </div>
+                    <div class="data-box" id="${titleId}">${escapeHTML(data[langCode].title)}</div>
+
+                    <div class="copy-group" style="margin-top: 15px;">
+                        <strong>DESCRIPTION</strong>
+                        <button class="btn-outline btn-small" onclick="copyText('${descId}', this)">Copy Desc</button>
+                    </div>
+                    <div class="data-box desc-box" id="${descId}">${escapeHTML(data[langCode].description)}</div>
+                `;
+                resultsDiv.appendChild(card);
+            });
+
+            // Cuộn xuống kết quả
+            resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        async function copyText(elementId, btnElement) {
+            const textToCopy = document.getElementById(elementId).innerText;
+            try {
+                await navigator.clipboard.writeText(textToCopy);
+                const originalText = btnElement.innerText;
+                btnElement.innerText = "✓ Đã copy";
+                btnElement.style.background = '#eff6ff';
+                setTimeout(() => {
+                    btnElement.innerText = originalText;
+                    btnElement.style.background = 'transparent';
+                }, 1500);
+            } catch (err) {
+                alert('Không thể copy. Trình duyệt chặn tính năng này.');
+            }
+        }
+
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str.replace(/[&<>'"]/g,
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+
+        // Khởi tạo khi load trang
+        window.onload = () => {
+            loadApiKeys();
+            loadSettings();
+        };
+    </script>
+</body>
+
+</html>
