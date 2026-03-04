@@ -344,9 +344,9 @@
             <div class="form-group">
                 <label>2. Chọn Gemini Model</label>
                 <select id="modelSelect">
+                    <option value="gemini-3-flash-preview">Gemini 3 Flash Preview (Thử nghiệm)</option>
                     <option value="gemini-1.5-flash">Gemini 1.5 Flash (Nhanh, rẻ, phù hợp dịch thuật)</option>
                     <option value="gemini-1.5-pro">Gemini 1.5 Pro (Thông minh hơn, chậm hơn)</option>
-                    <option value="gemini-3-flash-preview">Gemini 3 Flash Preview (Thử nghiệm)</option>
                 </select>
             </div>
 
@@ -388,14 +388,13 @@ de: German (Đức)`;
 Translate the following TITLE, DESCRIPTION, and HASHTAGS into the specified TARGET LANGUAGES.
 
 REQUIREMENTS (STRICT):
-1. ACCURATE TRANSLATION & STRUCTURE: Preserve the EXACT original meaning, paragraph structure, and bullet points. DO NOT rewrite, summarize, or move information around. Use natural, local SEO keywords.
-2. PROPER NOUNS & BRANDS: KEEP brand names, channel names, and proper nouns exactly as they are. DO NOT translate or remove them.
-3. HASHTAGS: Translate descriptive hashtags (like #dogmusic) into the target language. KEEP brand hashtags in their original form. Ensure all are formatted as valid hashtags.
-4. COPYRIGHT: REMOVE entirely any footer text like URLs, domain names, or "Copyright by..." notices.
+1. ACCURATE TRANSLATION & ZERO ENGLISH: Translate EVERYTHING, including terms like "DOG TV", "Dog Cartoon", or "TV for Dogs", into the natural equivalent of the target language. DO NOT leave these terms in English. The final title and description must be 100% in the target language.
+2. PRESERVE STRUCTURE: Keep the EXACT original meaning, paragraph structure, and bullet points. DO NOT rewrite, summarize, or move information around (e.g., do not move footer info to the top). Translate sentence-by-sentence faithfully.
+3. BRAND HASHTAGS ONLY: Translate descriptive hashtags (like #dogmusic) into the target language. ONLY keep specific channel/brand names IF they are formatted as hashtags (e.g., #ANS, #maxandmilotv). Format all as valid hashtags (no spaces).
+4. COPYRIGHT & FOOTERS: If you encounter URLs, domain names, or copyright notices (e.g., "Copyright by...", "ansnetwork.org"), REMOVE THEM entirely from the output.
 5. LENGTH: Title MUST be <= 100 characters. Description MUST be <= 5000 characters.
-6. FORMAT: Return ONLY valid JSON format strictly matching the schema. Escape all newlines in the description with \\n. DO NOT output plain text or markdown outside the JSON.
-7. COMPLETENESS: Include ALL target languages.
-
+6. FORMAT: Return ONLY valid JSON format strictly matching the schema. Escape all newlines in the description with \n to prevent JSON parsing errors. DO NOT output plain text.
+7. COMPLETENESS: Include ALL target languages. DO NOT omit any core content.
 TARGET LANGUAGES:
 {{TARGET_LIST}}
 
@@ -490,7 +489,7 @@ DESCRIPTION:
         function loadSettings() {
             const settings = JSON.parse(localStorage.getItem(SETTINGS_STORAGE) || '{}');
 
-            document.getElementById('modelSelect').value = settings.model || 'gemini-1.5-flash';
+            document.getElementById('modelSelect').value = settings.model || 'gemini-3-flash-preview';
             document.getElementById('languagesInput').value = settings.languages || DEFAULT_LANGUAGES;
             document.getElementById('promptInput').value = settings.prompt || DEFAULT_PROMPT;
         }
