@@ -19,6 +19,39 @@
             --radius: 8px;
         }
 
+        /* --- DARK THEME --- */
+        body.dark {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --border-color: #334155;
+
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+        }
+
+        /* scrollbar dark */
+        body.dark ::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+
+        body.dark ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        /* special elements */
+        body.dark #loading {
+            background: #1e293b;
+        }
+
+        body.dark .data-box {
+            background: #0f172a;
+        }
+
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             background-color: var(--bg-color);
@@ -445,6 +478,7 @@
         <div class="right-panel scrollable" id="rightPanel">
             <div class="right-header">
                 <h1>Kết quả Dịch thuật</h1>
+                <button class="btn-outline" onclick="toggleTheme()">🌙 Dark</button>
             </div>
 
             <div id="loading">⏳ Đang xử lý ngôn ngữ qua Gemini API. Vui lòng đợi trong giây lát...</div>
@@ -741,7 +775,30 @@ DESCRIPTION:
         window.onload = () => {
             loadApiKeys();
             loadSettings();
+            loadTheme();
         };
+
+        const THEME_STORAGE = "app_theme";
+
+        function toggleTheme() {
+            const body = document.body;
+
+            if (body.classList.contains("dark")) {
+                body.classList.remove("dark");
+                localStorage.setItem(THEME_STORAGE, "light");
+            } else {
+                body.classList.add("dark");
+                localStorage.setItem(THEME_STORAGE, "dark");
+            }
+        }
+
+        function loadTheme() {
+            const theme = localStorage.getItem(THEME_STORAGE);
+
+            if (theme === "dark") {
+                document.body.classList.add("dark");
+            }
+        }
     </script>
 </body>
 
