@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube Metadata Translator (Gemini AI)</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>">
     <style>
         :root {
             --primary: #2563eb;
@@ -64,6 +65,10 @@
             /* Prevent body scroll */
         }
 
+        .empty-state {
+            background: transparent;
+            text-align: center;
+        }
         /* --- Fullscreen Split Layout --- */
         .app-wrapper {
             display: flex;
@@ -436,7 +441,7 @@
 
                 <div class="form-group">
                     <label>
-                        <a href="https://aistudio.google.com/app/api-keys?" target="_blank">
+                        <a href="https://aistudio.google.com/app/api-keys?" target="_blank" style="color: red;">
                             1. Quản lý Gemini API Keys (Click để lấy Key)
                         </a>
                     </label>
@@ -490,9 +495,11 @@
 
             <div id="results">
                 <div class="empty-state" id="emptyState">
-                    <span>🌍</span>
+                    <!-- <span>🌍</span> -->
+                    <img src="screaming-tom-lizard.gif" alt="lizard-gif" style="width: 120px; margin-bottom: 20px;">
                     Nhập nội dung bên trái và bấm "Bắt đầu dịch" để xem kết quả tại đây.
                 </div>
+
             </div>
         </div>
     </div>
@@ -500,6 +507,7 @@
     <div id="toast">Thông báo</div>
 
     <script>
+        
         // --- CONSTANTS & DEFAULTS ---
         const KEYS_STORAGE = 'gemini_api_keys';
         const SETTINGS_STORAGE = 'gemini_translator_settings';
