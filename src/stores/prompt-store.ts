@@ -23,6 +23,7 @@ type PromptStoreState = {
   updateItem: (id: string, input: PromptItemInput, userId?: string | null) => Promise<PromptItem>;
   deleteItem: (id: string, userId?: string | null) => Promise<void>;
   toggleFavorite: (item: PromptItem, userId?: string | null) => Promise<PromptItem>;
+  togglePin: (item: PromptItem, userId?: string | null) => Promise<PromptItem>;
   recordUsage: (item: PromptItem, userId?: string | null) => Promise<PromptItem>;
   importGuestToCloud: () => Promise<number>;
 };
@@ -41,6 +42,16 @@ async function fetchCloudPrompts() {
   const response = await fetch("/api/prompts", { cache: "no-store" });
   const payload = await parseResponse<{ items: PromptItem[] }>(response);
   return payload.items;
+}
+
+function sortPromptItems(items: PromptItem[]) {
+  return [...items].sort((left, right) => {
+    if (left.pinned_at || right.pinned_at) {
+      return Date.parse(right.pinned_at || "0") - Date.parse(left.pinned_at || "0");
+    }
+
+    return Date.parse(right.updated_at) - Date.parse(left.updated_at);
+  });
 }
 
 async function createCloudPrompt(input: PromptItemInput) {
@@ -82,6 +93,14 @@ async function recordCloudUsage(item: PromptItem) {
   return payload.item;
 }
 
+async function toggleCloudPin(item: PromptItem) {
+  const response = await fetch(`/api/prompts/${item.id}/pin`, {
+    method: item.pinned_at ? "DELETE" : "POST"
+  });
+  const payload = await parseResponse<{ item: PromptItem }>(response);
+  return payload.item;
+}
+
 export const usePromptStore = create<PromptStoreState>((set, get) => ({
   items: [],
   mode: "guest",
@@ -94,7 +113,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
 
     try {
       if (!userId) {
-        const items = getGuestPromptItems();
+        const items = sortPromptItems(getGuestPromptItems());
         set({
           items,
           syncStatus: "synced",
@@ -129,7 +148,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
     try {
       const item = userId ? await createCloudPrompt(input) : createGuestPromptItem(input);
       set({
-        items: [item, ...get().items],
+        items: sortPromptItems([item, ...get().items]),
         syncStatus: "synced",
         mode: userId ? "cloud" : "guest",
         guestCount: getGuestPromptCount()
@@ -150,7 +169,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
     try {
       const item = userId ? await updateCloudPrompt(id, input) : updateGuestPromptItem(id, input);
       set({
-        items: get().items.map((current) => (current.id === id ? item : current)),
+        items: sortPromptItems(get().items.map((current) => (current.id === id ? item : current))),
         syncStatus: "synced",
         guestCount: getGuestPromptCount()
       });
@@ -195,7 +214,25 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
 
     const updated = await toggleCloudFavorite(item);
     set({
-      items: get().items.map((current) => (current.id === item.id ? updated : current)),
+      items: sortPromptItems(get().items.map((current) => (current.id === item.id ? updated : current))),
+      syncStatus: "synced"
+    });
+    return updated;
+  },
+
+  async togglePin(item, userId) {
+    if (item.user_id && item.user_id !== userId) {
+      throw new Error("Only the owner can pin this prompt");
+    }
+
+    const updated = userId
+      ? await toggleCloudPin(item)
+      : updateGuestPromptItem(item.id, {
+          pinned_at: item.pinned_at ? null : new Date().toISOString()
+        });
+
+    set({
+      items: sortPromptItems(get().items.map((current) => (current.id === item.id ? updated : current))),
       syncStatus: "synced"
     });
     return updated;
@@ -207,7 +244,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
       : updateGuestPromptItem(item.id, { usage_count: item.usage_count + 1 });
 
     set({
-      items: get().items.map((current) => (current.id === item.id ? updated : current)),
+      items: sortPromptItems(get().items.map((current) => (current.id === item.id ? updated : current))),
       syncStatus: "synced"
     });
     return updated;
@@ -232,6 +269,7 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
           category: item.category,
           tags: item.tags,
           display: item.display,
+          pinned_at: item.pinned_at,
           is_favorite: item.is_favorite
         });
       }

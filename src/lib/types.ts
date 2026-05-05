@@ -68,6 +68,7 @@ export type PromptItem = {
   tags: string[];
   display: PromptDisplay;
   usage_count: number;
+  pinned_at: string | null;
   is_favorite: boolean;
   created_at: string;
   updated_at: string;
@@ -84,6 +85,7 @@ export type PromptItemInput = {
   tags?: string[];
   display?: PromptDisplay;
   usage_count?: number;
+  pinned_at?: string | null;
   is_favorite?: boolean;
 };
 

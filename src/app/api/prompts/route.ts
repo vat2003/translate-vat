@@ -28,7 +28,8 @@ function toPromptPayload(input: PromptItemInput, userId: string) {
     note: input.note || "",
     category: input.category || "",
     tags: normalizeTags(input.tags),
-    display: normalizeDisplay(input.display)
+    display: normalizeDisplay(input.display),
+    pinned_at: input.pinned_at ?? null
   };
 }
 
@@ -94,6 +95,7 @@ export async function GET(request: NextRequest) {
     .from("prompt_items")
     .select("*")
     .or(`display.eq.public,user_id.eq.${user.id}`)
+    .order("pinned_at", { ascending: false, nullsFirst: false })
     .order("updated_at", { ascending: false });
 
   if (favoritesOnly) {
@@ -120,7 +122,7 @@ export async function GET(request: NextRequest) {
   const items = await addFavoriteFlags(supabase, user.id, (data || []) as PromptItem[]);
 
   return NextResponse.json({
-    items: items.sort((left, right) => Number(right.is_favorite) - Number(left.is_favorite))
+    items
   });
 }
 

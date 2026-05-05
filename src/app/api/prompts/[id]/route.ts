@@ -39,6 +39,7 @@ function toUpdatePayload(input: PromptItemInput) {
   if (input.category !== undefined) payload.category = input.category;
   if (input.tags !== undefined) payload.tags = normalizeTags(input.tags);
   if (input.display !== undefined) payload.display = normalizeDisplay(input.display);
+  if (input.pinned_at !== undefined) payload.pinned_at = input.pinned_at;
 
   return payload;
 }

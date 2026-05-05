@@ -81,6 +81,7 @@ export function AppShell() {
   const updateItem = usePromptStore((state) => state.updateItem);
   const deleteItem = usePromptStore((state) => state.deleteItem);
   const toggleFavorite = usePromptStore((state) => state.toggleFavorite);
+  const togglePin = usePromptStore((state) => state.togglePin);
   const recordUsage = usePromptStore((state) => state.recordUsage);
   const importGuestToCloud = usePromptStore((state) => state.importGuestToCloud);
   const refreshGuestCount = usePromptStore((state) => state.refreshGuestCount);
@@ -102,6 +103,7 @@ export function AppShell() {
     [items]
   );
   const isSavingPrompt = syncStatus === "saving";
+  const isPromptLibraryRefreshing = syncStatus === "loading";
 
   useEffect(() => {
     const loadedSettings = readAppSettings();
@@ -278,6 +280,14 @@ export function AppShell() {
     }
   }
 
+  async function handleTogglePin(item: PromptItem) {
+    try {
+      await togglePin(item, user?.id);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not update pin");
+    }
+  }
+
   async function handleUsePromptChoice(item: PromptItem) {
     try {
       const updated = await recordUsage(item, user?.id);
@@ -287,6 +297,37 @@ export function AppShell() {
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Could not track usage");
     }
+  }
+
+  async function handleUsePromptItem(item: PromptItem) {
+    if (!user && item.user_id) {
+      if (!supabaseConfigured) {
+        setNotice("Log in to use public prompts");
+        return;
+      }
+
+      const supabase = createClient();
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+      return;
+    }
+
+    try {
+      setSystemPrompt(item.system_prompt || settings.systemPrompt);
+      setSelectedLanguage(item.target_language || "all");
+      await recordUsage(item, user?.id);
+      setNotice("Suggestion applied");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not use prompt");
+    }
+  }
+
+  async function handleRefreshPromptLibrary() {
+    await hydrate(user?.id ?? null);
   }
 
   async function handleImportGuest() {
@@ -574,12 +615,17 @@ export function AppShell() {
               <div className="h-[560px]">
                 <PromptList
                   items={items}
+                  currentUserId={user?.id ?? null}
                   activeItemId={activeItemId}
                   search={search}
+                  refreshing={isPromptLibraryRefreshing}
                   onSearchChange={setSearch}
+                  onRefresh={handleRefreshPromptLibrary}
                   onSelect={loadPromptItem}
+                  onUse={handleUsePromptItem}
                   onDelete={handleDeletePrompt}
                   onToggleFavorite={handleToggleFavorite}
+                  onTogglePin={handleTogglePin}
                 />
               </div>
             </div>
@@ -588,14 +634,19 @@ export function AppShell() {
           <aside className="hidden min-h-0 border-l border-zinc-200 bg-[#fafafa] dark:border-zinc-800 dark:bg-zinc-950/60 xl:block xl:max-h-screen">
             <PromptList
               items={items}
+              currentUserId={user?.id ?? null}
               activeItemId={activeItemId}
               search={search}
               isOpen={promptLibraryOpen}
+              refreshing={isPromptLibraryRefreshing}
               onSearchChange={setSearch}
               onOpenChange={setPromptLibraryOpen}
+              onRefresh={handleRefreshPromptLibrary}
               onSelect={loadPromptItem}
+              onUse={handleUsePromptItem}
               onDelete={handleDeletePrompt}
               onToggleFavorite={handleToggleFavorite}
+              onTogglePin={handleTogglePin}
             />
           </aside>
         </div>

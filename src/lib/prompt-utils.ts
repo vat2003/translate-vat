@@ -79,6 +79,7 @@ export function normalizePromptItem(input: PromptItemInput & Partial<PromptItem>
     tags: normalizeTags(input.tags),
     display: input.display ?? "private",
     usage_count: Number(input.usage_count ?? 0),
+    pinned_at: input.pinned_at ?? null,
     is_favorite: Boolean(input.is_favorite),
     created_at: input.created_at || now,
     updated_at: input.updated_at || now
