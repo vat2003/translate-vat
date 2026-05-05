@@ -38,6 +38,11 @@ type GenerateResponse = {
   error?: string;
 };
 
+type LatestExchange = {
+  request: unknown;
+  response: unknown;
+};
+
 export function AppShell() {
   const supabaseConfigured = isSupabaseConfigured();
   const [authReady, setAuthReady] = useState(false);
@@ -62,6 +67,7 @@ export function AppShell() {
   const [generationError, setGenerationError] = useState("");
   const [results, setResults] = useState<GeneratedResult[]>([]);
   const [notice, setNotice] = useState("");
+  const [latestExchange, setLatestExchange] = useState<LatestExchange | null>(null);
 
   const items = usePromptStore((state) => state.items);
   const syncStatus = usePromptStore((state) => state.syncStatus);
@@ -295,20 +301,39 @@ export function AppShell() {
     setGenerationError("");
     setResults([]);
 
+    const requestBody = {
+      apiKey: activeApiKey.value,
+      model: settings.model,
+      title,
+      description,
+      systemPrompt,
+      targetLanguages: selectedTargetLanguages
+    };
+    const requestPreview = {
+      method: "POST",
+      url: "/api/generate",
+      body: {
+        ...requestBody,
+        apiKey: "[redacted]"
+      }
+    };
+
+    setLatestExchange({ request: requestPreview, response: null });
+
     try {
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          apiKey: activeApiKey.value,
-          model: settings.model,
-          title,
-          description,
-          systemPrompt,
-          targetLanguages: selectedTargetLanguages
-        })
+        body: JSON.stringify(requestBody)
       });
       const payload = (await response.json().catch(() => ({}))) as GenerateResponse;
+      const responsePreview = {
+        ok: response.ok,
+        status: response.status,
+        body: payload
+      };
+
+      setLatestExchange({ request: requestPreview, response: responsePreview });
 
       if (!response.ok) {
         throw new Error(payload.error || "Generation failed");
@@ -318,6 +343,10 @@ export function AppShell() {
       setNotice("Generation complete");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Generation failed";
+      setLatestExchange((current) => ({
+        request: current?.request ?? requestPreview,
+        response: current?.response ?? { error: message }
+      }));
       setGenerationError(message);
       setNotice(message);
     } finally {
@@ -326,6 +355,8 @@ export function AppShell() {
   }
 
   const shellClass = settings.theme === "dark" ? "dark" : "";
+  const latestRequestJson = latestExchange ? JSON.stringify(latestExchange.request, null, 2) : "";
+  const latestResponseJson = latestExchange ? JSON.stringify(latestExchange.response, null, 2) : "";
 
   return (
     <div className={shellClass}>
@@ -443,6 +474,13 @@ export function AppShell() {
               {generating && (
                 <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300">
                   Generating metadata...
+                </div>
+              )}
+
+              {latestExchange && (
+                <div className="mb-4 flex flex-wrap gap-2">
+                  <CopyButton value={latestRequestJson} label="Copy Request" onError={setNotice} />
+                  <CopyButton value={latestResponseJson} label="Copy Response" onError={setNotice} />
                 </div>
               )}
 
