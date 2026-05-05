@@ -24,7 +24,7 @@ function matchesSearch(item: PromptItem, search: string) {
     return true;
   }
 
-  return [item.title, item.note, item.category, item.tags.join(" ")]
+  return [item.name, item.note, item.category, item.tags.join(" ")]
     .join(" ")
     .toLowerCase()
     .includes(term);
@@ -110,10 +110,10 @@ export function PromptList({
                     onClick={() => onSelect(item)}
                   >
                     <h3 className="truncate text-sm font-semibold text-zinc-950 dark:text-zinc-50">
-                      {item.title}
+                      {item.name}
                     </h3>
                     <p className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-                      {item.note || item.description || "No note"}
+                      {item.note || item.system_prompt || "No note"}
                     </p>
                   </button>
                   <button
@@ -133,6 +133,8 @@ export function PromptList({
                     </span>
                   )}
                   <span>{item.target_language === "all" ? "All languages" : item.target_language}</span>
+                  <span>{item.display}</span>
+                  <span>{item.usage_count} uses</span>
                   <span>{formatDateTime(item.updated_at)}</span>
                 </div>
 

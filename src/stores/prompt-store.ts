@@ -23,6 +23,7 @@ type PromptStoreState = {
   updateItem: (id: string, input: PromptItemInput, userId?: string | null) => Promise<PromptItem>;
   deleteItem: (id: string, userId?: string | null) => Promise<void>;
   toggleFavorite: (item: PromptItem, userId?: string | null) => Promise<PromptItem>;
+  recordUsage: (item: PromptItem, userId?: string | null) => Promise<PromptItem>;
   importGuestToCloud: () => Promise<number>;
 };
 
@@ -65,6 +66,20 @@ async function updateCloudPrompt(id: string, input: PromptItemInput) {
 async function deleteCloudPrompt(id: string) {
   const response = await fetch(`/api/prompts/${id}`, { method: "DELETE" });
   await parseResponse<{ ok: boolean }>(response);
+}
+
+async function toggleCloudFavorite(item: PromptItem) {
+  const response = await fetch(`/api/prompts/${item.id}/favorite`, {
+    method: item.is_favorite ? "DELETE" : "POST"
+  });
+  const payload = await parseResponse<{ item: PromptItem }>(response);
+  return payload.item;
+}
+
+async function recordCloudUsage(item: PromptItem) {
+  const response = await fetch(`/api/prompts/${item.id}/use`, { method: "POST" });
+  const payload = await parseResponse<{ item: PromptItem }>(response);
+  return payload.item;
 }
 
 export const usePromptStore = create<PromptStoreState>((set, get) => ({
@@ -174,7 +189,28 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
   },
 
   async toggleFavorite(item, userId) {
-    return get().updateItem(item.id, { is_favorite: !item.is_favorite }, userId);
+    if (!userId) {
+      return get().updateItem(item.id, { is_favorite: !item.is_favorite }, userId);
+    }
+
+    const updated = await toggleCloudFavorite(item);
+    set({
+      items: get().items.map((current) => (current.id === item.id ? updated : current)),
+      syncStatus: "synced"
+    });
+    return updated;
+  },
+
+  async recordUsage(item, userId) {
+    const updated = userId
+      ? await recordCloudUsage(item)
+      : updateGuestPromptItem(item.id, { usage_count: item.usage_count + 1 });
+
+    set({
+      items: get().items.map((current) => (current.id === item.id ? updated : current)),
+      syncStatus: "synced"
+    });
+    return updated;
   },
 
   async importGuestToCloud() {
@@ -189,13 +225,13 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
     try {
       for (const item of guestItems) {
         await createCloudPrompt({
-          title: item.title,
-          description: item.description,
+          name: item.name,
           system_prompt: item.system_prompt,
           target_language: item.target_language,
           note: item.note,
           category: item.category,
           tags: item.tags,
+          display: item.display,
           is_favorite: item.is_favorite
         });
       }

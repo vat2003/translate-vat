@@ -48,6 +48,8 @@ export type LanguageOption = {
   label: string;
 };
 
+export type PromptDisplay = "private" | "public";
+
 export type GeneratedResult = {
   code: string;
   label: string;
@@ -58,19 +60,21 @@ export type GeneratedResult = {
 export type PromptItem = {
   id: string;
   user_id: string | null;
-  title: string;
-  description: string;
+  name: string;
   system_prompt: string;
   target_language: string;
   note: string;
   category: string;
   tags: string[];
+  display: PromptDisplay;
+  usage_count: number;
   is_favorite: boolean;
   created_at: string;
   updated_at: string;
 };
 
 export type PromptItemInput = {
+  name?: string;
   title?: string;
   description?: string;
   system_prompt?: string;
@@ -78,6 +82,8 @@ export type PromptItemInput = {
   note?: string;
   category?: string;
   tags?: string[];
+  display?: PromptDisplay;
+  usage_count?: number;
   is_favorite?: boolean;
 };
 

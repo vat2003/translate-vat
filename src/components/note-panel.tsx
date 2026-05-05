@@ -1,34 +1,41 @@
 "use client";
 
 import { FilePlus2, Save, Star } from "lucide-react";
+import type { PromptDisplay } from "@/lib/types";
 
 type NotePanelProps = {
-  activeTitle: string;
+  name: string;
   note: string;
   category: string;
   tagsRaw: string;
+  display: PromptDisplay;
   favorite: boolean;
   saving: boolean;
   isEditing: boolean;
+  onNameChange: (value: string) => void;
   onNoteChange: (value: string) => void;
   onCategoryChange: (value: string) => void;
   onTagsChange: (value: string) => void;
+  onDisplayChange: (value: PromptDisplay) => void;
   onFavoriteChange: (value: boolean) => void;
   onSave: () => void;
   onNew: () => void;
 };
 
 export function NotePanel({
-  activeTitle,
+  name,
   note,
   category,
   tagsRaw,
+  display,
   favorite,
   saving,
   isEditing,
+  onNameChange,
   onNoteChange,
   onCategoryChange,
   onTagsChange,
+  onDisplayChange,
   onFavoriteChange,
   onSave,
   onNew
@@ -38,16 +45,29 @@ export function NotePanel({
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-50">
-            {isEditing ? "Editing prompt" : "Prompt note"}
+            {isEditing ? "Editing suggestion" : "Suggestion note"}
           </h2>
           {isEditing && (
-            <p className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">{activeTitle}</p>
+            <p className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">{name}</p>
           )}
         </div>
         <button className="button-secondary" type="button" onClick={onNew}>
           <FilePlus2 size={16} />
           New
         </button>
+      </div>
+
+      <div>
+        <label className="field-label" htmlFor="suggestion-name">
+          Name
+        </label>
+        <input
+          id="suggestion-name"
+          className="input-field"
+          value={name}
+          onChange={(event) => onNameChange(event.target.value)}
+          placeholder="Suggestion name"
+        />
       </div>
 
       <div>
@@ -88,6 +108,21 @@ export function NotePanel({
             placeholder="youtube, title"
           />
         </div>
+      </div>
+
+      <div>
+        <label className="field-label" htmlFor="display">
+          Visibility
+        </label>
+        <select
+          id="display"
+          className="input-field"
+          value={display}
+          onChange={(event) => onDisplayChange(event.target.value as PromptDisplay)}
+        >
+          <option value="private">Private</option>
+          <option value="public">Public</option>
+        </select>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">

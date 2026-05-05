@@ -21,6 +21,7 @@ type PromptEditorProps = {
   onSystemPromptChange: (value: string) => void;
   onLanguageChange: (value: string) => void;
   onApiKeyChange: (value: string) => void;
+  onUsePromptChoice: (item: PromptItem) => void;
   onGenerate: () => void;
   onOpenSettings: () => void;
 };
@@ -41,6 +42,7 @@ export function PromptEditor({
   onSystemPromptChange,
   onLanguageChange,
   onApiKeyChange,
+  onUsePromptChoice,
   onGenerate,
   onOpenSettings
 }: PromptEditorProps) {
@@ -119,13 +121,14 @@ export function PromptEditor({
               const item = promptChoices.find((choice) => choice.id === event.target.value);
               if (item?.system_prompt) {
                 onSystemPromptChange(item.system_prompt);
+                onUsePromptChoice(item);
               }
             }}
           >
             <option value="">Use current prompt</option>
             {promptChoices.map((choice) => (
               <option key={choice.id} value={choice.id}>
-                {choice.title}
+                {choice.name}
               </option>
             ))}
           </select>

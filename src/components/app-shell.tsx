@@ -20,6 +20,7 @@ import {
   DEFAULT_SYSTEM_PROMPT,
   type AppSettings,
   type GeneratedResult,
+  type PromptDisplay,
   type PromptItem,
   type PromptItemInput
 } from "@/lib/types";
@@ -55,9 +56,11 @@ export function AppShell() {
   const [description, setDescription] = useState("");
   const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT);
   const [selectedLanguage, setSelectedLanguage] = useState("all");
+  const [promptName, setPromptName] = useState("");
   const [note, setNote] = useState("");
   const [category, setCategory] = useState("");
   const [tagsRaw, setTagsRaw] = useState("");
+  const [display, setDisplay] = useState<PromptDisplay>("private");
   const [favorite, setFavorite] = useState(false);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -78,6 +81,7 @@ export function AppShell() {
   const updateItem = usePromptStore((state) => state.updateItem);
   const deleteItem = usePromptStore((state) => state.deleteItem);
   const toggleFavorite = usePromptStore((state) => state.toggleFavorite);
+  const recordUsage = usePromptStore((state) => state.recordUsage);
   const importGuestToCloud = usePromptStore((state) => state.importGuestToCloud);
   const refreshGuestCount = usePromptStore((state) => state.refreshGuestCount);
 
@@ -201,33 +205,35 @@ export function AppShell() {
     setDescription("");
     setSystemPrompt(settings.systemPrompt);
     setSelectedLanguage("all");
+    setPromptName("");
     setNote("");
     setCategory("");
     setTagsRaw("");
+    setDisplay("private");
     setFavorite(false);
   }
 
   function loadPromptItem(item: PromptItem) {
     setActiveItemId(item.id);
-    setTitle(item.title);
-    setDescription(item.description);
+    setPromptName(item.name);
     setSystemPrompt(item.system_prompt || settings.systemPrompt);
     setSelectedLanguage(item.target_language || "all");
     setNote(item.note);
     setCategory(item.category);
     setTagsRaw(item.tags.join(", "));
+    setDisplay(item.display);
     setFavorite(item.is_favorite);
   }
 
   function buildPromptInput(): PromptItemInput {
     return {
-      title: title.trim() || "Untitled prompt",
-      description,
+      name: promptName.trim() || "Untitled suggestion",
       system_prompt: systemPrompt,
       target_language: selectedLanguage,
       note,
       category,
       tags: normalizeTags(tagsRaw),
+      display,
       is_favorite: favorite
     };
   }
@@ -238,6 +244,7 @@ export function AppShell() {
         ? await updateItem(activeItemId, buildPromptInput(), user?.id)
         : await createItem(buildPromptInput(), user?.id);
       setActiveItemId(saved.id);
+      setPromptName(saved.name);
       setNotice(user ? "Prompt synced to Supabase" : "Prompt saved locally");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Could not save prompt");
@@ -245,7 +252,7 @@ export function AppShell() {
   }
 
   async function handleDeletePrompt(item: PromptItem) {
-    if (!window.confirm(`Delete "${item.title}"?`)) {
+    if (!window.confirm(`Delete "${item.name}"?`)) {
       return;
     }
 
@@ -268,6 +275,17 @@ export function AppShell() {
       }
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Could not update favorite");
+    }
+  }
+
+  async function handleUsePromptChoice(item: PromptItem) {
+    try {
+      const updated = await recordUsage(item, user?.id);
+      if (activeItemId === item.id) {
+        setFavorite(updated.is_favorite);
+      }
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not track usage");
     }
   }
 
@@ -420,21 +438,25 @@ export function AppShell() {
                 onSystemPromptChange={setSystemPrompt}
                 onLanguageChange={setSelectedLanguage}
                 onApiKeyChange={handleApiKeyChange}
+                onUsePromptChoice={handleUsePromptChoice}
                 onGenerate={handleGenerate}
                 onOpenSettings={() => setSettingsOpen(true)}
               />
 
               <NotePanel
-                activeTitle={title || "Untitled prompt"}
+                name={promptName}
                 note={note}
                 category={category}
                 tagsRaw={tagsRaw}
+                display={display}
                 favorite={favorite}
                 saving={isSavingPrompt}
                 isEditing={Boolean(activeItemId)}
+                onNameChange={setPromptName}
                 onNoteChange={setNote}
                 onCategoryChange={setCategory}
                 onTagsChange={setTagsRaw}
+                onDisplayChange={setDisplay}
                 onFavoriteChange={setFavorite}
                 onSave={handleSavePrompt}
                 onNew={resetDraft}
@@ -485,7 +507,7 @@ export function AppShell() {
               )}
 
               {results.length > 0 ? (
-                <div className="grid gap-4 2xl:grid-cols-2">
+                <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(350px,1fr))]">
                   {results.map((item) => (
                     <article
                       key={item.code}

@@ -71,13 +71,14 @@ export function normalizePromptItem(input: PromptItemInput & Partial<PromptItem>
   return {
     id: input.id || crypto.randomUUID(),
     user_id: input.user_id ?? null,
-    title: input.title?.trim() || "Untitled prompt",
-    description: input.description ?? "",
+    name: input.name?.trim() || input.title?.trim() || "Untitled suggestion",
     system_prompt: input.system_prompt ?? "",
     target_language: input.target_language ?? "all",
     note: input.note ?? "",
     category: input.category ?? "",
     tags: normalizeTags(input.tags),
+    display: input.display ?? "private",
+    usage_count: Number(input.usage_count ?? 0),
     is_favorite: Boolean(input.is_favorite),
     created_at: input.created_at || now,
     updated_at: input.updated_at || now
