@@ -56,6 +56,7 @@ export function AppShell() {
   const [favorite, setFavorite] = useState(false);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [promptLibraryOpen, setPromptLibraryOpen] = useState(true);
 
   const [generating, setGenerating] = useState(false);
   const [generationError, setGenerationError] = useState("");
@@ -329,7 +330,13 @@ export function AppShell() {
   return (
     <div className={shellClass}>
       <div className="min-h-screen bg-[#f7f8fb] text-zinc-950 dark:bg-[#111113] dark:text-zinc-50">
-        <div className="grid min-h-screen lg:grid-cols-[440px_minmax(0,1fr)] xl:grid-cols-[440px_minmax(0,1fr)_370px]">
+        <div
+          className={`grid min-h-screen transition-[grid-template-columns] duration-300 ease-in-out lg:grid-cols-[440px_minmax(0,1fr)] ${
+            promptLibraryOpen
+              ? "xl:grid-cols-[440px_minmax(0,1fr)_370px]"
+              : "xl:grid-cols-[440px_minmax(0,1fr)_48px]"
+          }`}
+        >
           <aside className="border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 lg:max-h-screen lg:overflow-y-auto">
             <div className="sticky top-0 z-20 border-b border-zinc-200 bg-white/95 p-5 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
               <div className="flex items-center justify-between gap-3">
@@ -523,7 +530,9 @@ export function AppShell() {
               items={items}
               activeItemId={activeItemId}
               search={search}
+              isOpen={promptLibraryOpen}
               onSearchChange={setSearch}
+              onOpenChange={setPromptLibraryOpen}
               onSelect={loadPromptItem}
               onDelete={handleDeletePrompt}
               onToggleFavorite={handleToggleFavorite}
