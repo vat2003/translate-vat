@@ -1,12 +1,13 @@
 "use client";
 
 import type { User } from "@supabase/supabase-js";
-import { Clapperboard, Moon, Settings, Sun } from "lucide-react";
+import { Clapperboard, MessageSquare, Moon, Settings, Sun } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { ApiKeyDialog } from "@/components/api-key-dialog";
 import { AuthButton } from "@/components/auth-button";
 import { CopyButton } from "@/components/copy-button";
+import { FeedbackDialog } from "@/components/feedback-dialog";
 import { NotePanel } from "@/components/note-panel";
 import { PromptEditor } from "@/components/prompt-editor";
 import { PromptList } from "@/components/prompt-list";
@@ -51,6 +52,7 @@ export function AppShell() {
   const [settings, setSettings] = useState<AppSettings>(initialSettings);
   const [apiKeys, setApiKeys] = useState<LocalApiKey[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -532,15 +534,23 @@ export function AppShell() {
                       : selectedTargetLanguages[0]?.label || "No language"}
                   </p>
                 </div>
-                <AuthButton
-                  user={user}
-                  ready={authReady}
-                  configured={supabaseConfigured}
-                  syncStatus={syncStatus}
-                  guestCount={guestCount}
-                  onImportGuest={handleImportGuest}
-                  onNotice={setNotice}
-                />
+                <div className="flex flex-wrap items-center gap-2">
+                  {user && (
+                    <button className="button-secondary" type="button" onClick={() => setFeedbackOpen(true)}>
+                      <MessageSquare size={16} />
+                      Feedback
+                    </button>
+                  )}
+                  <AuthButton
+                    user={user}
+                    ready={authReady}
+                    configured={supabaseConfigured}
+                    syncStatus={syncStatus}
+                    guestCount={guestCount}
+                    onImportGuest={handleImportGuest}
+                    onNotice={setNotice}
+                  />
+                </div>
               </div>
               {(storeError || generationError) && (
                 <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
@@ -675,6 +685,13 @@ export function AppShell() {
           onKeysChange={setApiKeys}
           onSettingsChange={setSettings}
           onSaveSettings={handleSettingsSave}
+          onNotice={setNotice}
+        />
+
+        <FeedbackDialog
+          open={feedbackOpen}
+          user={user}
+          onClose={() => setFeedbackOpen(false)}
           onNotice={setNotice}
         />
 
