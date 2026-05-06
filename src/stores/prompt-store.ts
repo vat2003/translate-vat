@@ -9,6 +9,7 @@ import {
   getGuestPromptItems,
   updateGuestPromptItem
 } from "@/lib/local-store";
+import { normalizePromptItem } from "@/lib/prompt-utils";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import type { AppMode, PromptItem, PromptItemInput, SyncStatus } from "@/lib/types";
 
@@ -42,7 +43,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
 async function fetchCloudPrompts() {
   const response = await fetch("/api/prompts", { cache: "no-store" });
   const payload = await parseResponse<{ items: PromptItem[] }>(response);
-  return payload.items;
+  return payload.items.map((item) => normalizePromptItem(item));
 }
 
 function sortPromptItems(items: PromptItem[]) {
@@ -62,7 +63,7 @@ async function createCloudPrompt(input: PromptItemInput) {
     body: JSON.stringify(input)
   });
   const payload = await parseResponse<{ item: PromptItem }>(response);
-  return payload.item;
+  return normalizePromptItem(payload.item);
 }
 
 async function updateCloudPrompt(id: string, input: PromptItemInput) {
@@ -72,7 +73,7 @@ async function updateCloudPrompt(id: string, input: PromptItemInput) {
     body: JSON.stringify(input)
   });
   const payload = await parseResponse<{ item: PromptItem }>(response);
-  return payload.item;
+  return normalizePromptItem(payload.item);
 }
 
 async function deleteCloudPrompt(id: string) {
@@ -85,13 +86,13 @@ async function toggleCloudFavorite(item: PromptItem) {
     method: item.is_favorite ? "DELETE" : "POST"
   });
   const payload = await parseResponse<{ item: PromptItem }>(response);
-  return payload.item;
+  return normalizePromptItem(payload.item);
 }
 
 async function recordCloudUsage(item: PromptItem) {
   const response = await fetch(`/api/prompts/${item.id}/use`, { method: "POST" });
   const payload = await parseResponse<{ item: PromptItem }>(response);
-  return payload.item;
+  return normalizePromptItem(payload.item);
 }
 
 async function toggleCloudPin(item: PromptItem) {
@@ -99,7 +100,7 @@ async function toggleCloudPin(item: PromptItem) {
     method: item.pinned_at ? "DELETE" : "POST"
   });
   const payload = await parseResponse<{ item: PromptItem }>(response);
-  return payload.item;
+  return normalizePromptItem(payload.item);
 }
 
 export const usePromptStore = create<PromptStoreState>((set, get) => ({

@@ -20,9 +20,9 @@ REQUIREMENTS (STRICT):
 4. COPYRIGHT & FOOTERS: If you encounter URLs, domain names, or copyright notices (e.g., "Copyright by...", "ansnetwork.org"), REMOVE THEM entirely from the output.
 5. LENGTH: Title MUST be <= 100 characters. Description MUST be <= 5000 characters.
 6. FORMAT: Return ONLY valid JSON format strictly matching the schema. Escape all newlines in the description with \\n to prevent JSON parsing errors. DO NOT output plain text.
-7. COMPLETENESS: Include ALL target languages. DO NOT omit any core content.
+7. COMPLETENESS: Include ALL target languages. DO NOT omit any core content.`;
 
-TARGET LANGUAGES:
+export const SYSTEM_PROMPT_REQUEST_TEMPLATE = `TARGET LANGUAGES:
 {{TARGET_LIST}}
 
 OUTPUT FORMAT (STRICT):

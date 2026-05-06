@@ -8,7 +8,7 @@ import {
   type PromptItem,
   type PromptItemInput
 } from "@/lib/types";
-import { normalizePromptItem } from "@/lib/prompt-utils";
+import { normalizePromptItem, stripHiddenPromptSection } from "@/lib/prompt-utils";
 
 const PROMPTS_STORAGE = "yt_prompt_items_guest";
 const SETTINGS_STORAGE = "gemini_translator_settings";
@@ -97,17 +97,22 @@ export function readAppSettings(): AppSettings {
   const legacyTheme =
     canUseStorage() && window.localStorage.getItem(LEGACY_THEME_STORAGE) === "dark" ? "dark" : "light";
 
+  const systemPrompt = settings.systemPrompt || settings.prompt || DEFAULT_SYSTEM_PROMPT;
+
   return {
     model: settings.model || DEFAULT_MODEL,
     languagesRaw: settings.languagesRaw || settings.languages || DEFAULT_LANGUAGES,
-    systemPrompt: settings.systemPrompt || settings.prompt || DEFAULT_SYSTEM_PROMPT,
+    systemPrompt: stripHiddenPromptSection(systemPrompt),
     selectedApiKeyId: settings.selectedApiKeyId || "",
     theme: settings.theme || legacyTheme
   };
 }
 
 export function saveAppSettings(settings: AppSettings) {
-  writeJson(SETTINGS_STORAGE, settings);
+  writeJson(SETTINGS_STORAGE, {
+    ...settings,
+    systemPrompt: stripHiddenPromptSection(settings.systemPrompt)
+  });
 
   if (canUseStorage()) {
     window.localStorage.setItem(LEGACY_THEME_STORAGE, settings.theme);

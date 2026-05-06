@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getAuthenticatedUser, isSupabaseConfigured } from "@/lib/supabase/server";
-import { normalizeTags } from "@/lib/prompt-utils";
+import { normalizeTags, stripHiddenPromptSection } from "@/lib/prompt-utils";
 import type { PromptDisplay, PromptItem, PromptItemInput } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -23,7 +23,7 @@ function toPromptPayload(input: PromptItemInput, userId: string) {
   return {
     user_id: userId,
     name: input.name?.trim() || input.title?.trim() || "Untitled suggestion",
-    system_prompt: input.system_prompt || "",
+    system_prompt: stripHiddenPromptSection(input.system_prompt || ""),
     target_language: input.target_language || "all",
     note: input.note || "",
     category: input.category || "",

@@ -1,4 +1,8 @@
+import { SYSTEM_PROMPT_REQUEST_TEMPLATE } from "@/lib/types";
 import type { LanguageOption, PromptItem, PromptItemInput } from "@/lib/types";
+
+const HIDDEN_PROMPT_SECTION_PATTERN =
+  /(?:\r?\n)*TARGET LANGUAGES:\s*\r?\n\{\{TARGET_LIST\}\}[\s\S]*$/;
 
 export function parseLanguages(raw: string): LanguageOption[] {
   return raw
@@ -21,16 +25,23 @@ export function buildPrompt(
   description: string,
   targetLanguages: LanguageOption[]
 ) {
+  const visiblePrompt = stripHiddenPromptSection(template);
   const targetList = targetLanguages.map((language) => language.code).join(", ");
   const outputFormat = targetLanguages
     .map((language) => `  "${language.code}": { "title": "...", "description": "..." }`)
     .join(",\n");
 
-  return template
+  return [visiblePrompt, SYSTEM_PROMPT_REQUEST_TEMPLATE]
+    .filter(Boolean)
+    .join("\n\n")
     .replaceAll("{{TARGET_LIST}}", targetList)
     .replaceAll("{{OUTPUT_FORMAT}}", outputFormat)
     .replaceAll("{{TITLE}}", title)
     .replaceAll("{{DESC}}", description);
+}
+
+export function stripHiddenPromptSection(value: string) {
+  return value.replace(HIDDEN_PROMPT_SECTION_PATTERN, "").trim();
 }
 
 export function extractJsonText(value: string) {
@@ -72,7 +83,7 @@ export function normalizePromptItem(input: PromptItemInput & Partial<PromptItem>
     id: input.id || crypto.randomUUID(),
     user_id: input.user_id ?? null,
     name: input.name?.trim() || input.title?.trim() || "Untitled suggestion",
-    system_prompt: input.system_prompt ?? "",
+    system_prompt: stripHiddenPromptSection(input.system_prompt ?? ""),
     target_language: input.target_language ?? "all",
     note: input.note ?? "",
     category: input.category ?? "",

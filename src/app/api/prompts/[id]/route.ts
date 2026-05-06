@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser, isSupabaseConfigured } from "@/lib/supabase/server";
-import { normalizeTags } from "@/lib/prompt-utils";
+import { normalizeTags, stripHiddenPromptSection } from "@/lib/prompt-utils";
 import type { PromptDisplay, PromptItem, PromptItemInput } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -33,7 +33,7 @@ function toUpdatePayload(input: PromptItemInput) {
   if (input.name !== undefined || input.title !== undefined) {
     payload.name = input.name?.trim() || input.title?.trim() || "Untitled suggestion";
   }
-  if (input.system_prompt !== undefined) payload.system_prompt = input.system_prompt;
+  if (input.system_prompt !== undefined) payload.system_prompt = stripHiddenPromptSection(input.system_prompt);
   if (input.target_language !== undefined) payload.target_language = input.target_language || "all";
   if (input.note !== undefined) payload.note = input.note;
   if (input.category !== undefined) payload.category = input.category;
