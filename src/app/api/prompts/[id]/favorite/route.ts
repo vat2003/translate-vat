@@ -46,7 +46,10 @@ export async function POST(_request: Request, context: RouteContext) {
     const item = await getVisibleItem(supabase, id);
     const { error } = await supabase
       .from("user_favorites")
-      .upsert({ user_id: user.id, prompt_item_id: id }, { onConflict: "user_id,prompt_item_id" });
+      .upsert(
+        { user_id: user.id, prompt_item_id: id },
+        { onConflict: "user_id,prompt_item_id", ignoreDuplicates: true }
+      );
 
     if (error) {
       throw error;

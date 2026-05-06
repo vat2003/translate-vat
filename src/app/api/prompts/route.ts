@@ -85,20 +85,21 @@ export async function GET(request: NextRequest) {
 
   const { supabase, user } = await getAuthenticatedUser();
 
-  if (!user) {
-    return unauthorized();
-  }
-
   const search = request.nextUrl.searchParams.get("q")?.trim();
   const favoritesOnly = request.nextUrl.searchParams.get("favorites") === "1";
   let query = supabase
     .from("prompt_items")
     .select("*")
-    .or(`display.eq.public,user_id.eq.${user.id}`)
     .order("pinned_at", { ascending: false, nullsFirst: false })
     .order("updated_at", { ascending: false });
 
+  query = user ? query.or(`display.eq.public,user_id.eq.${user.id}`) : query.eq("display", "public");
+
   if (favoritesOnly) {
+    if (!user) {
+      return NextResponse.json({ items: [] });
+    }
+
     const favoriteIds = await getFavoriteIds(supabase, user.id);
 
     if (!favoriteIds.length) {
@@ -119,7 +120,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const items = await addFavoriteFlags(supabase, user.id, (data || []) as PromptItem[]);
+  const items = user
+    ? await addFavoriteFlags(supabase, user.id, (data || []) as PromptItem[])
+    : ((data || []) as PromptItem[]).map((item) => ({ ...item, is_favorite: false }));
 
   return NextResponse.json({
     items

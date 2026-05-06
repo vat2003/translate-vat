@@ -9,6 +9,7 @@ import {
   getGuestPromptItems,
   updateGuestPromptItem
 } from "@/lib/local-store";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
 import type { AppMode, PromptItem, PromptItemInput, SyncStatus } from "@/lib/types";
 
 type PromptStoreState = {
@@ -113,11 +114,13 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
 
     try {
       if (!userId) {
-        const items = sortPromptItems(getGuestPromptItems());
+        const guestItems = getGuestPromptItems();
+        const publicItems = isSupabaseConfigured() ? await fetchCloudPrompts() : [];
+        const items = sortPromptItems([...guestItems, ...publicItems]);
         set({
           items,
           syncStatus: "synced",
-          guestCount: items.length,
+          guestCount: guestItems.length,
           mode: "guest"
         });
         return;
@@ -239,6 +242,10 @@ export const usePromptStore = create<PromptStoreState>((set, get) => ({
   },
 
   async recordUsage(item, userId) {
+    if (!userId && item.user_id) {
+      throw new Error("Authentication required");
+    }
+
     const updated = userId
       ? await recordCloudUsage(item)
       : updateGuestPromptItem(item.id, { usage_count: item.usage_count + 1 });

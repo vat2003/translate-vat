@@ -68,7 +68,10 @@ async function setFavorite(
   const query = isFavorite
     ? supabase
         .from("user_favorites")
-        .upsert({ user_id: userId, prompt_item_id: promptItemId }, { onConflict: "user_id,prompt_item_id" })
+        .upsert(
+          { user_id: userId, prompt_item_id: promptItemId },
+          { onConflict: "user_id,prompt_item_id", ignoreDuplicates: true }
+        )
     : supabase
         .from("user_favorites")
         .delete()

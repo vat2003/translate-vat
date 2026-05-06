@@ -114,6 +114,7 @@ export function PromptList({
           ) : (
             filteredItems.map((item) => {
               const isOwner = !item.user_id || item.user_id === currentUserId;
+              const requiresLogin = !currentUserId && Boolean(item.user_id);
 
               return (
                 <article
@@ -128,6 +129,8 @@ export function PromptList({
                     <button
                       className="min-w-0 flex-1 text-left"
                       type="button"
+                      title={requiresLogin ? "Log in to use public prompts" : undefined}
+                      disabled={requiresLogin}
                       onClick={() => (isOwner ? onSelect(item) : onUse(item))}
                     >
                       <h3 className="truncate text-sm font-semibold text-zinc-950 dark:text-zinc-50">
@@ -151,7 +154,14 @@ export function PromptList({
                       <button
                         className="icon-button"
                         type="button"
-                        title={item.is_favorite ? "Unfavorite" : "Favorite"}
+                        title={
+                          requiresLogin
+                            ? "Log in to favorite public prompts"
+                            : item.is_favorite
+                              ? "Unfavorite"
+                              : "Favorite"
+                        }
+                        disabled={requiresLogin}
                         onClick={() => onToggleFavorite(item)}
                       >
                         <Star size={16} fill={item.is_favorite ? "currentColor" : "none"} />
@@ -198,7 +208,13 @@ export function PromptList({
                         </button>
                       </>
                     ) : (
-                      <button className="button-secondary h-9" type="button" onClick={() => onUse(item)}>
+                      <button
+                        className="button-secondary h-9"
+                        type="button"
+                        title={requiresLogin ? "Log in to use public prompts" : "Use prompt"}
+                        disabled={requiresLogin}
+                        onClick={() => onUse(item)}
+                      >
                         <Play size={15} />
                         Use
                       </button>

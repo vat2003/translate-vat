@@ -63,6 +63,7 @@ export function AppShell() {
   const [display, setDisplay] = useState<PromptDisplay>("private");
   const [favorite, setFavorite] = useState(false);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
+  const [usagePromptItemId, setUsagePromptItemId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [promptLibraryOpen, setPromptLibraryOpen] = useState(true);
 
@@ -99,8 +100,8 @@ export function AppShell() {
     return languages.filter((language) => language.code === selectedLanguage);
   }, [languages, selectedLanguage]);
   const promptChoices = useMemo(
-    () => items.filter((item) => item.system_prompt.trim().length > 0),
-    [items]
+    () => items.filter((item) => item.system_prompt.trim().length > 0 && (user || !item.user_id)),
+    [items, user]
   );
   const isSavingPrompt = syncStatus === "saving";
   const isPromptLibraryRefreshing = syncStatus === "loading";
@@ -197,12 +198,19 @@ export function AppShell() {
 
     updateAndSaveSettings(nextSettings);
     setSystemPrompt(nextSettings.systemPrompt);
+    setUsagePromptItemId(null);
     setSettingsOpen(false);
     setNotice("Settings saved locally");
   }
 
+  function handleSystemPromptChange(value: string) {
+    setSystemPrompt(value);
+    setUsagePromptItemId(null);
+  }
+
   function resetDraft() {
     setActiveItemId(null);
+    setUsagePromptItemId(null);
     setTitle("");
     setDescription("");
     setSystemPrompt(settings.systemPrompt);
@@ -217,6 +225,7 @@ export function AppShell() {
 
   function loadPromptItem(item: PromptItem) {
     setActiveItemId(item.id);
+    setUsagePromptItemId(item.id);
     setPromptName(item.name);
     setSystemPrompt(item.system_prompt || settings.systemPrompt);
     setSelectedLanguage(item.target_language || "all");
@@ -288,15 +297,8 @@ export function AppShell() {
     }
   }
 
-  async function handleUsePromptChoice(item: PromptItem) {
-    try {
-      const updated = await recordUsage(item, user?.id);
-      if (activeItemId === item.id) {
-        setFavorite(updated.is_favorite);
-      }
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Could not track usage");
-    }
+  function handleUsePromptChoice(item: PromptItem) {
+    setUsagePromptItemId(item.id);
   }
 
   async function handleUsePromptItem(item: PromptItem) {
@@ -319,7 +321,7 @@ export function AppShell() {
     try {
       setSystemPrompt(item.system_prompt || settings.systemPrompt);
       setSelectedLanguage(item.target_language || "all");
-      await recordUsage(item, user?.id);
+      setUsagePromptItemId(item.id);
       setNotice("Suggestion applied");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Could not use prompt");
@@ -399,6 +401,20 @@ export function AppShell() {
       }
 
       setResults(payload.results || []);
+      const usagePromptItem = usagePromptItemId ? items.find((item) => item.id === usagePromptItemId) : null;
+
+      if (usagePromptItem) {
+        try {
+          const updated = await recordUsage(usagePromptItem, user?.id);
+          if (activeItemId === usagePromptItem.id) {
+            setFavorite(updated.is_favorite);
+          }
+        } catch {
+          setNotice("Generation complete, but usage could not be tracked");
+          return;
+        }
+      }
+
       setNotice("Generation complete");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Generation failed";
@@ -476,7 +492,7 @@ export function AppShell() {
                 generating={generating}
                 onTitleChange={setTitle}
                 onDescriptionChange={setDescription}
-                onSystemPromptChange={setSystemPrompt}
+                onSystemPromptChange={handleSystemPromptChange}
                 onLanguageChange={setSelectedLanguage}
                 onApiKeyChange={handleApiKeyChange}
                 onUsePromptChoice={handleUsePromptChoice}
