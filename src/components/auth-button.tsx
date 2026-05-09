@@ -64,11 +64,11 @@ export function AuthButton({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="inline-flex h-9 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
+      <span className="status-pill">
         {user ? <Cloud size={15} /> : <HardDrive size={15} />}
         {user ? "Logged in" : "Guest mode"}
       </span>
-      <span className="inline-flex h-9 items-center rounded-lg bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+      <span className={syncStatus === "error" ? "status-pill-danger" : "status-pill"}>
         {syncLabel(syncStatus)}
       </span>
       {user && guestCount > 0 && (
@@ -83,7 +83,7 @@ export function AuthButton({
           Logout
         </button>
       ) : (
-        <button className="button-primary" type="button" disabled={!ready} onClick={signIn}>
+        <button className="button-secondary" type="button" disabled={!ready} onClick={signIn}>
           <LogIn size={16} />
           Google login
         </button>

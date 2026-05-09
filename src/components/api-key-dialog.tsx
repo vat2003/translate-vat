@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyRound, Save, Trash2, X } from "lucide-react";
+import { CheckCircle2, KeyRound, Palette, Save, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
   addApiKey,
@@ -10,6 +10,7 @@ import {
   type LocalApiKey
 } from "@/lib/api-key-store";
 import type { AppSettings } from "@/lib/types";
+import { THEME_OPTIONS } from "@/lib/theme-options";
 
 type ApiKeyDialogProps = {
   open: boolean;
@@ -18,6 +19,7 @@ type ApiKeyDialogProps = {
   onClose: () => void;
   onKeysChange: (keys: LocalApiKey[]) => void;
   onSettingsChange: (settings: AppSettings) => void;
+  onThemeChange: (theme: AppSettings["theme"]) => void;
   onSaveSettings: () => void;
   onNotice: (message: string) => void;
 };
@@ -29,6 +31,7 @@ export function ApiKeyDialog({
   onClose,
   onKeysChange,
   onSettingsChange,
+  onThemeChange,
   onSaveSettings,
   onNotice
 }: ApiKeyDialogProps) {
@@ -39,6 +42,10 @@ export function ApiKeyDialog({
   const selectedRemoval = useMemo(
     () => apiKeys.find((key) => key.id === keyToRemove),
     [apiKeys, keyToRemove]
+  );
+  const activeTheme = useMemo(
+    () => THEME_OPTIONS.find((theme) => theme.id === settings.theme) || THEME_OPTIONS[0],
+    [settings.theme]
   );
 
   if (!open) {
@@ -80,14 +87,14 @@ export function ApiKeyDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay)] p-4">
       <div
-        className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-950"
+        className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-[var(--border-subtle)] bg-[var(--panel-bg)] shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-label="Settings"
       >
-        <div className="sticky top-0 flex items-center justify-between border-b border-zinc-200 bg-white/95 px-5 py-4 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
+        <div className="sticky top-0 flex items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--panel-bg-glass)] px-5 py-4 backdrop-blur">
           <div className="flex items-center gap-2 font-semibold">
             <KeyRound size={18} />
             Settings
@@ -195,6 +202,64 @@ export function ApiKeyDialog({
             </div>
           </section>
 
+          <details className="rounded-lg border border-[var(--border-muted)] bg-[var(--panel-elevated)]">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-[var(--text-primary)] outline-none transition hover:bg-[var(--panel-hover)] focus-visible:ring-4 focus-visible:ring-[var(--primary-ring)] [&::-webkit-details-marker]:hidden">
+              <span className="inline-flex min-w-0 items-center gap-2">
+                <Palette size={17} />
+                Advanced Themes
+                <span className="chip-muted max-w-[220px] truncate">{activeTheme.name}</span>
+              </span>
+            </summary>
+            <div className="border-t border-[var(--border-muted)] p-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {THEME_OPTIONS.map((theme) => {
+                  const isSelected = theme.id === settings.theme;
+
+                  return (
+                    <article
+                      key={theme.id}
+                      data-theme-card={theme.id}
+                      className={`rounded-lg border p-3 transition ${
+                        isSelected
+                          ? "border-[var(--primary-border)] bg-[var(--primary-soft)]"
+                          : "border-[var(--border-muted)] bg-[var(--panel-bg)]"
+                      }`}
+                    >
+                      <div className="mb-3 flex items-start gap-3">
+                        <div className="theme-card-symbol" aria-hidden="true" />
+                        <div className="min-w-0 flex-1">
+                          <h3 className="truncate text-sm font-semibold text-[var(--text-primary)]">
+                            {theme.name}
+                          </h3>
+                          <div className="mt-2 flex gap-1.5">
+                            {theme.preview.map((color) => (
+                              <span
+                                key={color}
+                                className="h-4 w-4 rounded-full border border-[var(--border-subtle)]"
+                                style={{ backgroundColor: color }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <CheckCircle2 size={17} className="shrink-0 text-[var(--primary-text)]" />
+                        )}
+                      </div>
+                      <button
+                        className={isSelected ? "button-secondary h-8 w-full" : "button-secondary h-8 w-full"}
+                        type="button"
+                        disabled={isSelected}
+                        onClick={() => onThemeChange(theme.id)}
+                      >
+                        {isSelected ? "Selected" : "Apply"}
+                      </button>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          </details>
+
           <section>
             <label className="field-label" htmlFor="languages-raw">
               Target Languages
@@ -221,7 +286,7 @@ export function ApiKeyDialog({
           </section>
         </div>
 
-        <div className="sticky bottom-0 flex justify-end gap-2 border-t border-zinc-200 bg-white/95 px-5 py-4 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
+        <div className="sticky bottom-0 flex justify-end gap-2 border-t border-[var(--border-subtle)] bg-[var(--panel-bg-glass)] px-5 py-4 backdrop-blur">
           <button className="button-secondary" type="button" onClick={onClose}>
             Cancel
           </button>

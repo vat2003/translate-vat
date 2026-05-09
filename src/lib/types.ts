@@ -41,7 +41,17 @@ export type AppMode = "guest" | "cloud";
 
 export type SyncStatus = "idle" | "loading" | "saving" | "synced" | "error";
 
-export type ThemeMode = "light" | "dark";
+export type ThemeMode =
+  | "light"
+  | "dark"
+  | "cat-siamese"
+  | "cat-ginger"
+  | "cat-tabby"
+  | "galaxy"
+  | "hacker"
+  | "cute-pink"
+  | "anime"
+  | "football";
 
 export type LanguageOption = {
   code: string;

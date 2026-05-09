@@ -41,14 +41,14 @@ export function NotePanel({
   onNew
 }: NotePanelProps) {
   return (
-    <section className="space-y-4 border-t border-zinc-200 pt-5 dark:border-zinc-800">
+    <section className="space-y-4 border-t border-[var(--border-muted)] pt-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-50">
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">
             {isEditing ? "Editing suggestion" : "Suggestion note"}
           </h2>
           {isEditing && (
-            <p className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">{name}</p>
+            <p className="mt-1 truncate text-xs text-[var(--text-muted)]">{name}</p>
           )}
         </div>
         <button className="button-secondary" type="button" onClick={onNew}>
@@ -129,7 +129,7 @@ export function NotePanel({
         <button
           className={
             favorite
-              ? "button-secondary border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300"
+              ? "button-secondary border-[var(--warning-border)] bg-[var(--warning-soft)] text-[var(--warning-text)]"
               : "button-secondary"
           }
           type="button"

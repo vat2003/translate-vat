@@ -1,7 +1,7 @@
 "use client";
 
 import type { User } from "@supabase/supabase-js";
-import { Clapperboard, MessageSquare, Moon, Settings, Sun } from "lucide-react";
+import { ChevronDown, Clapperboard, MessageSquare, Moon, Settings, SlidersHorizontal, Sun, Wrench } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { ApiKeyDialog } from "@/components/api-key-dialog";
@@ -12,9 +12,11 @@ import { NotePanel } from "@/components/note-panel";
 import { PromptEditor } from "@/components/prompt-editor";
 import { PromptList } from "@/components/prompt-list";
 import { readApiKeys, type LocalApiKey } from "@/lib/api-key-store";
+import { ACTIVE_TOOL, CREATOR_TOOLS, type CreatorToolIcon } from "@/lib/creator-tools";
 import { readAppSettings, saveAppSettings } from "@/lib/local-store";
 import { normalizeTags, parseLanguages } from "@/lib/prompt-utils";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { getThemeBaseMode } from "@/lib/theme-options";
 import {
   DEFAULT_LANGUAGES,
   DEFAULT_MODEL,
@@ -43,6 +45,11 @@ type GenerateResponse = {
 type LatestExchange = {
   request: unknown;
   response: unknown;
+};
+
+const TOOL_ICONS: Record<CreatorToolIcon, typeof Clapperboard> = {
+  clapperboard: Clapperboard,
+  wrench: Wrench
 };
 
 export function AppShell() {
@@ -105,6 +112,24 @@ export function AppShell() {
     () => items.filter((item) => item.system_prompt.trim().length > 0 && (user || !item.user_id)),
     [items, user]
   );
+  const usagePromptItem = useMemo(
+    () => (usagePromptItemId ? items.find((item) => item.id === usagePromptItemId) || null : null),
+    [items, usagePromptItemId]
+  );
+  const selectedPromptChoiceId = useMemo(
+    () =>
+      usagePromptItem && promptChoices.some((choice) => choice.id === usagePromptItem.id)
+        ? usagePromptItem.id
+        : "",
+    [promptChoices, usagePromptItem]
+  );
+  const promptStatusSource = usagePromptItem
+    ? "library"
+    : systemPrompt === settings.systemPrompt
+      ? "default"
+      : "custom";
+  const promptStatusLabel =
+    usagePromptItem?.name || (promptStatusSource === "default" ? "Default system prompt" : "Custom system prompt");
   const isSavingPrompt = syncStatus === "saving";
   const isPromptLibraryRefreshing = syncStatus === "loading";
 
@@ -180,14 +205,21 @@ export function AppShell() {
   }
 
   function handleThemeToggle() {
+    const currentBaseMode = getThemeBaseMode(settings.theme);
+
     updateAndSaveSettings({
       ...settings,
-      theme: settings.theme === "dark" ? "light" : "dark"
+      theme: currentBaseMode === "dark" ? "light" : "dark"
     });
   }
 
   function handleApiKeyChange(selectedApiKeyId: string) {
     updateAndSaveSettings({ ...settings, selectedApiKeyId });
+  }
+
+  function handleAdvancedThemeChange(theme: AppSettings["theme"]) {
+    setSettings((current) => ({ ...current, theme }));
+    saveAppSettings({ ...readAppSettings(), theme });
   }
 
   function handleSettingsSave() {
@@ -257,6 +289,7 @@ export function AppShell() {
         ? await updateItem(activeItemId, buildPromptInput(), user?.id)
         : await createItem(buildPromptInput(), user?.id);
       setActiveItemId(saved.id);
+      setUsagePromptItemId(saved.id);
       setPromptName(saved.name);
       setNotice(user ? "Prompt synced to Supabase" : "Prompt saved locally");
     } catch (error) {
@@ -273,6 +306,8 @@ export function AppShell() {
       await deleteItem(item.id, user?.id);
       if (activeItemId === item.id) {
         resetDraft();
+      } else if (usagePromptItemId === item.id) {
+        setUsagePromptItemId(null);
       }
       setNotice("Prompt deleted");
     } catch (error) {
@@ -324,7 +359,7 @@ export function AppShell() {
       setSystemPrompt(item.system_prompt || settings.systemPrompt);
       setSelectedLanguage(item.target_language || "all");
       setUsagePromptItemId(item.id);
-      setNotice("Suggestion applied");
+      setNotice(`Using "${item.name}"`);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Could not use prompt");
     }
@@ -403,12 +438,12 @@ export function AppShell() {
       }
 
       setResults(payload.results || []);
-      const usagePromptItem = usagePromptItemId ? items.find((item) => item.id === usagePromptItemId) : null;
+      const promptItemForUsage = usagePromptItemId ? items.find((item) => item.id === usagePromptItemId) : null;
 
-      if (usagePromptItem) {
+      if (promptItemForUsage) {
         try {
-          const updated = await recordUsage(usagePromptItem, user?.id);
-          if (activeItemId === usagePromptItem.id) {
+          const updated = await recordUsage(promptItemForUsage, user?.id);
+          if (activeItemId === promptItemForUsage.id) {
             setFavorite(updated.is_favorite);
           }
         } catch {
@@ -431,30 +466,37 @@ export function AppShell() {
     }
   }
 
-  const shellClass = settings.theme === "dark" ? "dark" : "";
+  const activeThemeBaseMode = getThemeBaseMode(settings.theme);
+  const shellClass = activeThemeBaseMode === "dark" ? "dark" : "";
   const latestRequestJson = latestExchange ? JSON.stringify(latestExchange.request, null, 2) : "";
   const latestResponseJson = latestExchange ? JSON.stringify(latestExchange.response, null, 2) : "";
+  const ActiveToolIcon = TOOL_ICONS[ACTIVE_TOOL.icon];
 
   return (
-    <div className={shellClass}>
-      <div className="min-h-screen bg-[#f7f8fb] text-zinc-950 dark:bg-[#111113] dark:text-zinc-50">
+    <div className={shellClass} data-theme={settings.theme}>
+      <div className="relative isolate min-h-screen text-[var(--text-primary)]" style={{ background: "var(--app-bg)" }}>
+        <div className="theme-motif" aria-hidden="true">
+          <span className="theme-motif__shape theme-motif__shape--one" />
+          <span className="theme-motif__shape theme-motif__shape--two" />
+          <span className="theme-motif__shape theme-motif__shape--three" />
+        </div>
         <div
-          className={`grid min-h-screen transition-[grid-template-columns] duration-300 ease-in-out lg:grid-cols-[440px_minmax(0,1fr)] ${
+          className={`relative z-10 grid min-h-screen transition-[grid-template-columns] duration-300 ease-in-out lg:grid-cols-[440px_minmax(0,1fr)] ${
             promptLibraryOpen
               ? "xl:grid-cols-[440px_minmax(0,1fr)_370px]"
               : "xl:grid-cols-[440px_minmax(0,1fr)_48px]"
           }`}
         >
-          <aside className="border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 lg:max-h-screen lg:overflow-y-auto">
-            <div className="sticky top-0 z-20 border-b border-zinc-200 bg-white/95 p-5 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
+          <aside className="border-r border-[var(--border-subtle)] bg-[var(--panel-bg)] lg:max-h-screen lg:overflow-y-auto">
+            <div className="sticky top-0 z-20 border-b border-[var(--border-subtle)] bg-[var(--panel-bg-glass)] p-5 backdrop-blur">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-600 text-white">
+                  <div className="theme-brand-mark flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--danger)] text-white">
                     <Clapperboard size={22} />
                   </div>
                   <div className="min-w-0">
-                    <h1 className="truncate text-base font-bold">YouTube Prompt Studio</h1>
-                    <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                    <h1 className="truncate text-base font-bold">Creator Tools Studio</h1>
+                    <p className="text-xs font-medium text-[var(--text-muted)]">
                       {user ? user.email : "Guest workspace"}
                     </p>
                   </div>
@@ -463,10 +505,10 @@ export function AppShell() {
                   <button
                     className="icon-button"
                     type="button"
-                    title={settings.theme === "dark" ? "Light theme" : "Dark theme"}
+                    title={activeThemeBaseMode === "dark" ? "Light theme" : "Dark theme"}
                     onClick={handleThemeToggle}
                   >
-                    {settings.theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+                    {activeThemeBaseMode === "dark" ? <Sun size={17} /> : <Moon size={17} />}
                   </button>
                   <button
                     className="icon-button"
@@ -481,54 +523,165 @@ export function AppShell() {
             </div>
 
             <div className="space-y-5 p-5">
+              <nav aria-label="Creator tools">
+                <details className="group rounded-lg border border-[var(--border-muted)] bg-[var(--panel-elevated)]">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-3 py-2.5 outline-none transition hover:bg-[var(--panel-hover)] focus-visible:ring-4 focus-visible:ring-[var(--primary-ring)] [&::-webkit-details-marker]:hidden">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--primary-soft)] text-[var(--primary-text)]">
+                        <ActiveToolIcon size={17} />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-xs font-semibold uppercase tracking-wide text-[var(--text-subtle)]">
+                          Tools
+                        </span>
+                        <span className="block truncate text-sm font-semibold text-[var(--text-primary)]">
+                          {ACTIVE_TOOL.name}
+                        </span>
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <span className="chip-success">{CREATOR_TOOLS.length} tools</span>
+                      <ChevronDown size={16} className="text-[var(--text-muted)] transition group-open:rotate-180" />
+                    </span>
+                  </summary>
+
+                  <div className="max-h-56 overflow-y-auto border-t border-[var(--border-muted)] p-2">
+                    {CREATOR_TOOLS.map((tool) => {
+                      const ToolIcon = TOOL_ICONS[tool.icon];
+                      const isActiveTool = tool.id === ACTIVE_TOOL.id;
+                      const isComingSoon = tool.status === "coming-soon";
+
+                      return (
+                        <div
+                          key={tool.id}
+                          className={`flex items-center gap-2 rounded-md px-2 py-2 ${
+                            isActiveTool ? "bg-[var(--primary-soft)]" : "opacity-75"
+                          }`}
+                          aria-current={isActiveTool ? "page" : undefined}
+                          aria-disabled={isComingSoon ? "true" : undefined}
+                          title={tool.description}
+                        >
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[var(--panel-bg)] text-[var(--primary-text)]">
+                            <ToolIcon size={15} />
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[var(--text-primary)]">
+                            {tool.name}
+                          </span>
+                          {isActiveTool && <span className="chip-success shrink-0">Active</span>}
+                          {isComingSoon && <span className="chip-muted shrink-0">Developing</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </details>
+              </nav>
+
               <PromptEditor
                 title={title}
                 description={description}
-                systemPrompt={systemPrompt}
                 selectedLanguage={selectedLanguage}
                 selectedApiKeyId={settings.selectedApiKeyId}
                 model={settings.model}
                 apiKeys={apiKeys}
                 languages={languages}
-                promptChoices={promptChoices}
                 generating={generating}
+                promptStatusLabel={promptStatusLabel}
+                promptStatusSource={promptStatusSource}
                 onTitleChange={setTitle}
                 onDescriptionChange={setDescription}
-                onSystemPromptChange={handleSystemPromptChange}
                 onLanguageChange={setSelectedLanguage}
                 onApiKeyChange={handleApiKeyChange}
-                onUsePromptChoice={handleUsePromptChoice}
                 onGenerate={handleGenerate}
                 onOpenSettings={() => setSettingsOpen(true)}
               />
 
-              <NotePanel
-                name={promptName}
-                note={note}
-                category={category}
-                tagsRaw={tagsRaw}
-                display={display}
-                favorite={favorite}
-                saving={isSavingPrompt}
-                isEditing={Boolean(activeItemId)}
-                onNameChange={setPromptName}
-                onNoteChange={setNote}
-                onCategoryChange={setCategory}
-                onTagsChange={setTagsRaw}
-                onDisplayChange={setDisplay}
-                onFavoriteChange={setFavorite}
-                onSave={handleSavePrompt}
-                onNew={resetDraft}
-              />
+              <details className="group border-t border-[var(--border-muted)] pt-5">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg py-1 text-sm font-semibold text-[var(--text-muted)] outline-none transition hover:text-[var(--primary-text)] focus-visible:ring-4 focus-visible:ring-[var(--primary-ring)] [&::-webkit-details-marker]:hidden">
+                  <span className="inline-flex items-center gap-2">
+                    <SlidersHorizontal size={16} />
+                    Advanced
+                    <span
+                      className={`max-w-[220px] truncate rounded-md px-2 py-0.5 text-xs font-semibold ${
+                        usagePromptItem
+                          ? "bg-[var(--success-soft)] text-[var(--success-text)]"
+                          : "bg-[var(--panel-muted)] text-[var(--text-muted)]"
+                      }`}
+                    >
+                      {promptStatusLabel}
+                    </span>
+                  </span>
+                  <ChevronDown size={17} className="transition group-open:rotate-180" />
+                </summary>
+
+                <div className="space-y-5 pt-4">
+                  <div>
+                    <label className="field-label" htmlFor="prompt-choice">
+                      System Prompt
+                    </label>
+                    <select
+                      id="prompt-choice"
+                      className="input-field mb-2"
+                      value={selectedPromptChoiceId}
+                      onChange={(event) => {
+                        if (!event.target.value) {
+                          setUsagePromptItemId(null);
+                          return;
+                        }
+
+                        const item = promptChoices.find((choice) => choice.id === event.target.value);
+                        if (item?.system_prompt) {
+                          handleSystemPromptChange(item.system_prompt);
+                          handleUsePromptChoice(item);
+                        }
+                      }}
+                    >
+                      <option value="">Custom / current prompt</option>
+                      {promptChoices.map((choice) => (
+                        <option key={choice.id} value={choice.id}>
+                          {choice.name}
+                        </option>
+                      ))}
+                    </select>
+                    <textarea
+                      className="input-field min-h-64 font-mono text-xs"
+                      value={systemPrompt}
+                      onChange={(event) => handleSystemPromptChange(event.target.value)}
+                    />
+                  </div>
+
+                  <NotePanel
+                    name={promptName}
+                    note={note}
+                    category={category}
+                    tagsRaw={tagsRaw}
+                    display={display}
+                    favorite={favorite}
+                    saving={isSavingPrompt}
+                    isEditing={Boolean(activeItemId)}
+                    onNameChange={setPromptName}
+                    onNoteChange={setNote}
+                    onCategoryChange={setCategory}
+                    onTagsChange={setTagsRaw}
+                    onDisplayChange={setDisplay}
+                    onFavoriteChange={setFavorite}
+                    onSave={handleSavePrompt}
+                    onNew={resetDraft}
+                  />
+                </div>
+              </details>
             </div>
           </aside>
 
           <main className="flex min-h-[70vh] min-w-0 flex-col lg:max-h-screen">
-            <header className="border-b border-zinc-200 bg-[#f7f8fb]/95 p-5 backdrop-blur dark:border-zinc-800 dark:bg-[#111113]/95">
+            <header className="border-b border-[var(--border-subtle)] bg-[var(--app-bg-glass)] p-5 backdrop-blur">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--primary-text)]">
+                    <ActiveToolIcon className="mr-1.5 inline align-[-3px]" size={14} />
+                    {ACTIVE_TOOL.name}
+                  </p>
                   <h2 className="text-lg font-bold">Output</h2>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  <p className="text-sm text-[var(--text-muted)]">
                     {selectedLanguage === "all"
                       ? `${selectedTargetLanguages.length} target languages`
                       : selectedTargetLanguages[0]?.label || "No language"}
@@ -553,7 +706,7 @@ export function AppShell() {
                 </div>
               </div>
               {(storeError || generationError) && (
-                <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+                <div className="mt-3 rounded-lg border border-[var(--danger-border)] bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger-text)]">
                   {generationError || storeError}
                 </div>
               )}
@@ -561,7 +714,7 @@ export function AppShell() {
 
             <div className="min-h-0 flex-1 overflow-y-auto p-5">
               {generating && (
-                <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300">
+                <div className="mb-4 rounded-lg border border-[var(--primary-border)] bg-[var(--primary-soft)] px-4 py-3 text-sm font-semibold text-[var(--primary-text)]">
                   Generating metadata...
                 </div>
               )}
@@ -578,13 +731,13 @@ export function AppShell() {
                   {results.map((item) => (
                     <article
                       key={item.code}
-                      className="rounded-lg border border-zinc-200 bg-white p-4 shadow-panel dark:border-zinc-800 dark:bg-zinc-950"
+                      className="rounded-lg border border-[var(--border-subtle)] bg-[var(--panel-elevated)] p-4 shadow-panel"
                     >
-                      <div className="mb-4 flex items-center justify-between gap-3 border-b border-zinc-200 pb-3 dark:border-zinc-800">
-                        <h3 className="min-w-0 truncate text-base font-bold text-blue-700 dark:text-blue-300">
+                      <div className="mb-4 flex items-center justify-between gap-3 border-b border-[var(--border-muted)] pb-3">
+                        <h3 className="min-w-0 truncate text-base font-bold text-[var(--primary-text)]">
                           {item.label}
                         </h3>
-                        <span className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-semibold uppercase text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                        <span className="chip-muted uppercase">
                           {item.code}
                         </span>
                       </div>
@@ -592,19 +745,19 @@ export function AppShell() {
                       <div className="space-y-4">
                         <div>
                           <div className="mb-2 flex items-center justify-between gap-2">
-                            <strong className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                            <strong className="text-xs uppercase tracking-wide text-[var(--text-muted)]">
                               Title
                             </strong>
                             <CopyButton value={item.title} label="Copy title" compact onError={setNotice} />
                           </div>
-                          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm leading-6 dark:border-zinc-800 dark:bg-zinc-900">
+                          <div className="rounded-lg border border-[var(--border-muted)] bg-[var(--panel-muted)] p-3 text-sm leading-6">
                             {item.title}
                           </div>
                         </div>
 
                         <div>
                           <div className="mb-2 flex items-center justify-between gap-2">
-                            <strong className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                            <strong className="text-xs uppercase tracking-wide text-[var(--text-muted)]">
                               Description
                             </strong>
                             <CopyButton
@@ -614,7 +767,7 @@ export function AppShell() {
                               onError={setNotice}
                             />
                           </div>
-                          <div className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm leading-6 dark:border-zinc-800 dark:bg-zinc-900">
+                          <div className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-lg border border-[var(--border-muted)] bg-[var(--panel-muted)] p-3 text-sm leading-6">
                             {item.description}
                           </div>
                         </div>
@@ -623,26 +776,28 @@ export function AppShell() {
                   ))}
                 </div>
               ) : (
-                <div className="flex min-h-[55vh] flex-col items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-white/50 p-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950/40 dark:text-zinc-400">
+                <div className="flex min-h-[55vh] flex-col items-center justify-center rounded-lg border border-dashed border-[var(--border-subtle)] bg-[var(--panel-bg)] p-8 text-center text-sm text-[var(--text-muted)]">
                   <Image
                     src="/screaming-tom-lizard.gif"
                     alt=""
                     width={112}
                     height={112}
                     unoptimized
-                    className="mb-5 h-28 w-28 rounded-lg object-cover"
+                    className="mb-5 h-24 w-24 rounded-lg object-cover opacity-85"
                   />
-                  <span>No output yet</span>
+                  <h3 className="mb-1 text-base font-semibold text-[var(--text-primary)]">Ready to generate</h3>
+                  <p>Enter a title and description, then click Generate.</p>
                 </div>
               )}
             </div>
 
-            <div className="border-t border-zinc-200 dark:border-zinc-800 xl:hidden">
+            <div className="border-t border-[var(--border-subtle)] xl:hidden">
               <div className="h-[560px]">
                 <PromptList
                   items={items}
                   currentUserId={user?.id ?? null}
                   activeItemId={activeItemId}
+                  usingItemId={usagePromptItemId}
                   search={search}
                   refreshing={isPromptLibraryRefreshing}
                   onSearchChange={setSearch}
@@ -657,11 +812,12 @@ export function AppShell() {
             </div>
           </main>
 
-          <aside className="hidden min-h-0 border-l border-zinc-200 bg-[#fafafa] dark:border-zinc-800 dark:bg-zinc-950/60 xl:block xl:max-h-screen">
+          <aside className="hidden min-h-0 border-l border-[var(--border-subtle)] bg-[var(--panel-bg)] xl:block xl:max-h-screen">
             <PromptList
               items={items}
               currentUserId={user?.id ?? null}
               activeItemId={activeItemId}
+              usingItemId={usagePromptItemId}
               search={search}
               isOpen={promptLibraryOpen}
               refreshing={isPromptLibraryRefreshing}
@@ -684,6 +840,7 @@ export function AppShell() {
           onClose={() => setSettingsOpen(false)}
           onKeysChange={setApiKeys}
           onSettingsChange={setSettings}
+          onThemeChange={handleAdvancedThemeChange}
           onSaveSettings={handleSettingsSave}
           onNotice={setNotice}
         />
@@ -696,7 +853,7 @@ export function AppShell() {
         />
 
         {notice && (
-          <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-zinc-950 px-4 py-3 text-sm font-semibold text-white shadow-xl dark:bg-white dark:text-zinc-950">
+          <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-[var(--text-primary)] px-4 py-3 text-sm font-semibold text-[var(--panel-bg)] shadow-xl">
             {notice}
           </div>
         )}

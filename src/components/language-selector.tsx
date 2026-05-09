@@ -17,7 +17,7 @@ export function LanguageSelector({ languages, value, onChange }: LanguageSelecto
       </label>
       <div className="relative">
         <Languages
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400"
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-subtle)]"
           size={17}
         />
         <select

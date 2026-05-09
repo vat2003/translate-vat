@@ -9,6 +9,7 @@ import {
   type PromptItemInput
 } from "@/lib/types";
 import { normalizePromptItem, stripHiddenPromptSection } from "@/lib/prompt-utils";
+import { isThemeMode } from "@/lib/theme-options";
 
 const PROMPTS_STORAGE = "yt_prompt_items_guest";
 const SETTINGS_STORAGE = "gemini_translator_settings";
@@ -104,7 +105,7 @@ export function readAppSettings(): AppSettings {
     languagesRaw: settings.languagesRaw || settings.languages || DEFAULT_LANGUAGES,
     systemPrompt: stripHiddenPromptSection(systemPrompt),
     selectedApiKeyId: settings.selectedApiKeyId || "",
-    theme: settings.theme || legacyTheme
+    theme: isThemeMode(settings.theme) ? settings.theme : legacyTheme
   };
 }
 

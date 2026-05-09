@@ -72,14 +72,14 @@ export function FeedbackDialog({ open, user, onClose, onNotice }: FeedbackDialog
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay)] p-4">
       <div
-        className="w-full max-w-xl rounded-xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-950"
+        className="w-full max-w-xl rounded-xl border border-[var(--border-subtle)] bg-[var(--panel-bg)] shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-label="Feedback"
       >
-        <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
+        <div className="flex items-center justify-between border-b border-[var(--border-subtle)] px-5 py-4">
           <div className="flex items-center gap-2 font-semibold">
             <MessageSquare size={18} />
             Feedback
@@ -137,7 +137,7 @@ export function FeedbackDialog({ open, user, onClose, onNotice }: FeedbackDialog
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-zinc-200 px-5 py-4 dark:border-zinc-800">
+        <div className="flex justify-end gap-2 border-t border-[var(--border-subtle)] px-5 py-4">
           <button className="button-secondary" type="button" disabled={sending} onClick={onClose}>
             Cancel
           </button>
