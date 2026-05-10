@@ -1,10 +1,10 @@
-export type CreatorToolId = "youtube-prompt-translate" | "youtube-tools";
+export type CreatorToolId = "youtube-prompt-translate" | "thumbnail-downloader" | "youtube-tools";
 
 export type CreatorToolStatus = "active" | "coming-soon";
 
-export type CreatorToolIcon = "clapperboard" | "wrench";
+export type CreatorToolIcon = "clapperboard" | "image" | "wrench";
 
-export type CreatorToolView = "youtube-prompt-translate" | "coming-soon";
+export type CreatorToolView = "youtube-prompt-translate" | "thumbnail-downloader" | "coming-soon";
 
 export type CreatorTool = {
   id: CreatorToolId;
@@ -25,6 +25,14 @@ export const CREATOR_TOOLS: CreatorTool[] = [
     icon: "clapperboard",
     status: "active",
     view: "youtube-prompt-translate"
+  },
+  {
+    id: "thumbnail-downloader",
+    name: "Thumbnail Downloader",
+    description: "Preview and download public YouTube thumbnail images.",
+    icon: "image",
+    status: "active",
+    view: "thumbnail-downloader"
   },
   {
     id: "youtube-tools",

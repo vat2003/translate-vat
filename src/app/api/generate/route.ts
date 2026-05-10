@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { GENERATE_BODY_LIMIT_BYTES, guardRequest, safeErrorResponse } from "@/lib/api-security";
 import { buildPrompt, extractJsonText } from "@/lib/prompt-utils";
 import type { GeneratePayload, GeneratedResult } from "@/lib/types";
 
@@ -16,6 +17,13 @@ type GeminiResponse = {
     message?: string;
   };
 };
+
+const SUPPORTED_GEMINI_MODELS = new Set([
+  "gemini-1.5-flash",
+  "gemini-1.5-pro",
+  "gemini-2.0-flash",
+  "gemini-3-flash-preview"
+]);
 
 function badRequest(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -38,14 +46,36 @@ function validatePayload(payload: Partial<GeneratePayload>) {
     return "Select at least one target language";
   }
 
+  if (payload.targetLanguages.length > 50) {
+    return "Too many target languages";
+  }
+
   if (!payload.model?.trim()) {
     return "Model is required";
+  }
+
+  if (!SUPPORTED_GEMINI_MODELS.has(payload.model.trim())) {
+    return "Unsupported model";
+  }
+
+  if (payload.title.length > 500 || payload.description.length > 30000 || payload.systemPrompt.length > 30000) {
+    return "Request body is too large";
   }
 
   return null;
 }
 
 export async function POST(request: Request) {
+  const guard = guardRequest(request, "generate", {
+    limit: 20,
+    windowMs: 60_000,
+    maxBodyBytes: GENERATE_BODY_LIMIT_BYTES
+  });
+
+  if (guard) {
+    return guard;
+  }
+
   let payload: GeneratePayload;
 
   try {
@@ -121,7 +151,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ results });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Generation failed";
-    return badRequest(message, 500);
+    return safeErrorResponse("api.generate", error, "Generation failed", 500);
   }
 }

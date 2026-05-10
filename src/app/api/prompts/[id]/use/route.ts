@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { guardRequest, isUuid, safeErrorResponse } from "@/lib/api-security";
 import { getAuthenticatedUser, isSupabaseConfigured } from "@/lib/supabase/server";
 import type { PromptItem } from "@/lib/types";
 
@@ -35,12 +36,25 @@ async function addFavoriteFlag(supabase: SupabaseClient, userId: string, item: P
   return { ...item, is_favorite: Boolean(data) };
 }
 
-export async function POST(_request: Request, context: RouteContext) {
+export async function POST(request: Request, context: RouteContext) {
   if (!isSupabaseConfigured()) {
     return unavailable();
   }
 
   const { id } = await context.params;
+  if (!isUuid(id)) {
+    return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
+  }
+
+  const guard = guardRequest(request, "prompts:use", {
+    limit: 120,
+    windowMs: 60_000
+  });
+
+  if (guard) {
+    return guard;
+  }
+
   const { supabase, user } = await getAuthenticatedUser();
 
   if (!user) {
@@ -52,7 +66,7 @@ export async function POST(_request: Request, context: RouteContext) {
   });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 404 });
+    return safeErrorResponse("api.prompts.use", error, "Prompt not found", 404);
   }
 
   const item = await addFavoriteFlag(supabase, user.id, data as PromptItem);

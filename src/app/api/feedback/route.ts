@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { JSON_BODY_LIMIT_BYTES, guardRequest, safeErrorResponse } from "@/lib/api-security";
 import { getAuthenticatedUser, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -29,6 +30,16 @@ export async function POST(request: Request) {
     return unavailable();
   }
 
+  const guard = guardRequest(request, "feedback:create", {
+    limit: 5,
+    windowMs: 60_000,
+    maxBodyBytes: JSON_BODY_LIMIT_BYTES
+  });
+
+  if (guard) {
+    return guard;
+  }
+
   const { supabase, user } = await getAuthenticatedUser();
 
   if (!user) {
@@ -41,6 +52,10 @@ export async function POST(request: Request) {
 
   if (!message) {
     return badRequest("Feedback message is required");
+  }
+
+  if (message.length > 5000 || (input.subject?.length || 0) > 200 || (input.pageUrl?.length || 0) > 2000) {
+    return badRequest("Feedback is too large");
   }
 
   const { data, error } = await supabase
@@ -57,7 +72,7 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return safeErrorResponse("api.feedback.create", error, "Could not send feedback", 500);
   }
 
   return NextResponse.json({ item: data }, { status: 201 });

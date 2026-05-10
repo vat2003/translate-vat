@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { guardRequest, isUuid, safeErrorResponse } from "@/lib/api-security";
 import { getAuthenticatedUser, isSupabaseConfigured } from "@/lib/supabase/server";
 import type { PromptItem } from "@/lib/types";
 
@@ -30,12 +31,25 @@ async function getVisibleItem(supabase: SupabaseClient, id: string) {
   return data as PromptItem;
 }
 
-export async function POST(_request: Request, context: RouteContext) {
+export async function POST(request: Request, context: RouteContext) {
   if (!isSupabaseConfigured()) {
     return unavailable();
   }
 
   const { id } = await context.params;
+  if (!isUuid(id)) {
+    return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
+  }
+
+  const guard = guardRequest(request, "prompts:favorite", {
+    limit: 60,
+    windowMs: 60_000
+  });
+
+  if (guard) {
+    return guard;
+  }
+
   const { supabase, user } = await getAuthenticatedUser();
 
   if (!user) {
@@ -57,17 +71,29 @@ export async function POST(_request: Request, context: RouteContext) {
 
     return NextResponse.json({ item: { ...item, is_favorite: true } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not favorite prompt";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return safeErrorResponse("api.prompts.favorite", error, "Could not favorite prompt", 500);
   }
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
   if (!isSupabaseConfigured()) {
     return unavailable();
   }
 
   const { id } = await context.params;
+  if (!isUuid(id)) {
+    return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
+  }
+
+  const guard = guardRequest(request, "prompts:favorite", {
+    limit: 60,
+    windowMs: 60_000
+  });
+
+  if (guard) {
+    return guard;
+  }
+
   const { supabase, user } = await getAuthenticatedUser();
 
   if (!user) {
@@ -88,7 +114,6 @@ export async function DELETE(_request: Request, context: RouteContext) {
 
     return NextResponse.json({ item: { ...item, is_favorite: false } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not unfavorite prompt";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return safeErrorResponse("api.prompts.unfavorite", error, "Could not unfavorite prompt", 500);
   }
 }

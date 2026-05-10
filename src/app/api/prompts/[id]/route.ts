@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { JSON_BODY_LIMIT_BYTES, guardRequest, isUuid, safeErrorResponse } from "@/lib/api-security";
 import { getAuthenticatedUser, isSupabaseConfigured } from "@/lib/supabase/server";
 import { normalizeTags, stripHiddenPromptSection } from "@/lib/prompt-utils";
 import type { PromptDisplay, PromptItem, PromptItemInput } from "@/lib/types";
@@ -91,6 +92,10 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 
   const { id } = await context.params;
+  if (!isUuid(id)) {
+    return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
+  }
+
   const { supabase, user } = await getAuthenticatedUser();
 
   if (!user) {
@@ -104,7 +109,7 @@ export async function GET(_request: Request, context: RouteContext) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 404 });
+    return safeErrorResponse("api.prompts.get", error, "Prompt not found", 404);
   }
 
   const item = await addFavoriteFlag(supabase, user.id, data as PromptItem);
@@ -118,13 +123,34 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   const { id } = await context.params;
+  if (!isUuid(id)) {
+    return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
+  }
+
+  const guard = guardRequest(request, "prompts:update", {
+    limit: 60,
+    windowMs: 60_000,
+    maxBodyBytes: JSON_BODY_LIMIT_BYTES
+  });
+
+  if (guard) {
+    return guard;
+  }
+
   const { supabase, user } = await getAuthenticatedUser();
 
   if (!user) {
     return unauthorized();
   }
 
-  const input = (await request.json()) as PromptItemInput;
+  let input: PromptItemInput;
+
+  try {
+    input = (await request.json()) as PromptItemInput;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
   const { data, error } = await supabase
     .from("prompt_items")
     .update(toUpdatePayload(input))
@@ -134,7 +160,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return safeErrorResponse("api.prompts.update", error, "Could not update prompt", 500);
   }
 
   if (input.is_favorite !== undefined) {
@@ -146,12 +172,25 @@ export async function PATCH(request: Request, context: RouteContext) {
   return NextResponse.json({ item });
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
   if (!isSupabaseConfigured()) {
     return unavailable();
   }
 
   const { id } = await context.params;
+  if (!isUuid(id)) {
+    return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
+  }
+
+  const guard = guardRequest(request, "prompts:delete", {
+    limit: 60,
+    windowMs: 60_000
+  });
+
+  if (guard) {
+    return guard;
+  }
+
   const { supabase, user } = await getAuthenticatedUser();
 
   if (!user) {
@@ -161,7 +200,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
   const { error } = await supabase.from("prompt_items").delete().eq("id", id).eq("user_id", user.id);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return safeErrorResponse("api.prompts.delete", error, "Could not delete prompt", 500);
   }
 
   return NextResponse.json({ ok: true });

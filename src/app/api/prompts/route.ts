@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { JSON_BODY_LIMIT_BYTES, guardRequest, safeErrorResponse } from "@/lib/api-security";
 import { getAuthenticatedUser, isSupabaseConfigured } from "@/lib/supabase/server";
 import { normalizeTags, stripHiddenPromptSection } from "@/lib/prompt-utils";
 import type { PromptDisplay, PromptItem, PromptItemInput } from "@/lib/types";
@@ -9,6 +10,14 @@ type SupabaseClient = Awaited<ReturnType<typeof getAuthenticatedUser>>["supabase
 
 function normalizeDisplay(value: PromptItemInput["display"]): PromptDisplay {
   return value === "public" ? "public" : "private";
+}
+
+function normalizeSearchTerm(value: string) {
+  return value
+    .slice(0, 80)
+    .replace(/[(),]/g, " ")
+    .replaceAll("%", "\\%")
+    .replaceAll("_", "\\_");
 }
 
 function unavailable() {
@@ -83,6 +92,15 @@ export async function GET(request: NextRequest) {
     return unavailable();
   }
 
+  const guard = guardRequest(request, "prompts:list", {
+    limit: 120,
+    windowMs: 60_000
+  });
+
+  if (guard) {
+    return guard;
+  }
+
   const { supabase, user } = await getAuthenticatedUser();
 
   const search = request.nextUrl.searchParams.get("q")?.trim();
@@ -110,14 +128,14 @@ export async function GET(request: NextRequest) {
   }
 
   if (search) {
-    const term = `%${search.replaceAll("%", "\\%").replaceAll("_", "\\_")}%`;
+    const term = `%${normalizeSearchTerm(search)}%`;
     query = query.or(`name.ilike.${term},note.ilike.${term},category.ilike.${term}`);
   }
 
   const { data, error } = await query;
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return safeErrorResponse("api.prompts.list", error, "Could not load prompts", 500);
   }
 
   const items = user
@@ -134,13 +152,30 @@ export async function POST(request: Request) {
     return unavailable();
   }
 
+  const guard = guardRequest(request, "prompts:create", {
+    limit: 60,
+    windowMs: 60_000,
+    maxBodyBytes: JSON_BODY_LIMIT_BYTES
+  });
+
+  if (guard) {
+    return guard;
+  }
+
   const { supabase, user } = await getAuthenticatedUser();
 
   if (!user) {
     return unauthorized();
   }
 
-  const input = (await request.json()) as PromptItemInput;
+  let input: PromptItemInput;
+
+  try {
+    input = (await request.json()) as PromptItemInput;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
   const { data, error } = await supabase
     .from("prompt_items")
     .insert(toPromptPayload(input, user.id))
@@ -148,7 +183,7 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return safeErrorResponse("api.prompts.create", error, "Could not create prompt", 500);
   }
 
   if (input.is_favorite) {
